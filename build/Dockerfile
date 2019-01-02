@@ -1,0 +1,7 @@
+FROM alpine:3.8
+
+RUN apk upgrade --update --no-cache
+
+USER nobody
+
+ADD build/_output/bin/rhpam-dev-operator /usr/local/bin/rhpam-dev-operator
