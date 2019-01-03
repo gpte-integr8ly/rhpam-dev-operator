@@ -9,7 +9,6 @@ import (
 
 const (
 	ServiceAccountTemplate            = "rhpamdev-service-account"
-	ServiceAccountRoleBindingTemplate = "rhpamdev-sa-role-binding"
 	DatabasePvcTemplate               = "rhpamdev-postgresql-pvc"
 	DatabaseServiceTemplate           = "rhpamdev-postgresql-service"
 	DatabaseDeploymentTemplate        = "rhpamdev-postgresql-dc"
@@ -29,7 +28,6 @@ type Resource struct {
 
 var (
 	ServiceAccountResource            Resource = Resource{name: ServiceAccount, template: ServiceAccountTemplate}
-	ServiceAccountRoleBindingResource Resource = Resource{name: ServiceAccountRoleBinding, template: ServiceAccountRoleBindingTemplate}
 	DatabasePvcResource               Resource = Resource{name: DatabasePvc, template: DatabasePvcTemplate}
 	DatabaseServiceResource           Resource = Resource{name: DatabaseService, template: DatabaseServiceTemplate}
 	DatabaseDeploymentConfigResource  Resource = Resource{name: DatabaseDeployment, template: DatabaseDeploymentTemplate}

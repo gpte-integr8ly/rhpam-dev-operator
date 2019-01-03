@@ -17,7 +17,6 @@ type TemplateHelper struct {
 
 type RhpamdevParameters struct {
 	ServiceAccount                      string
-	ServiceAccountRoleBinding           string
 	ApplicationName                     string
 	ApplicationNamespace                string
 	PostgresqlPvc                       string
@@ -66,7 +65,6 @@ func newTemplateHelper(rhpam *gptev1alpha1.RhpamDev) *TemplateHelper {
 
 	params := RhpamdevParameters{
 		ServiceAccount:                      ServiceAccount,
-		ServiceAccountRoleBinding:           ServiceAccountRoleBinding,
 		ApplicationName:                     ApplicationName,
 		ApplicationNamespace:                rhpam.Namespace,
 		PostgresqlPvc:                       DatabasePvc,

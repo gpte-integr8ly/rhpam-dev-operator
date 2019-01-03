@@ -20,7 +20,6 @@ const (
 	RhpamVersion                        = "7.1.1.GA"
 	ApplicationName                     = "rhpam"
 	ServiceAccount                      = "rhpam"
-	ServiceAccountRoleBinding           = "rhpam-view"
 	DatabaseCredentialsSecret           = "rhpam-postgresql"
 	DatabaseName                        = "rhpam"
 	DatabasePvc                         = "rhpam-postgresql"

@@ -49,7 +49,7 @@ func (ph *phaseHandler) Initialize(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.
 func (ph *phaseHandler) Prepare(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.RhpamDev, error) {
 	log.Info("Phase Prepare")
 
-	if err := ph.createResources(rhpam, []Resource{ServiceAccountResource, ServiceAccountRoleBindingResource}); err != nil {
+	if err := ph.createResources(rhpam, []Resource{ServiceAccountResource}); err != nil {
 		return nil, err
 	}
 
