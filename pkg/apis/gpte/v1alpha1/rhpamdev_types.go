@@ -6,12 +6,25 @@ import (
 
 // RhpamDevSpec defines the desired state of RhpamDev
 type RhpamDevSpec struct {
+	Config RhpamConfig `json:"config,omitempty"`
 }
 
 // RhpamDevStatus defines the observed state of RhpamDev
 type RhpamDevStatus struct {
 	Phase   StatusPhase `json:"phase"`
 	Version string      `json:"version"`
+}
+
+type RhpamConfig struct {
+	DatabaseConfig RhpamDatabaseConfig `json:"database,omitempty"`
+}
+
+type RhpamDatabaseConfig struct {
+	PersistentVolumeCapacity string `json:"persistentVolumeCapacity,omitempty"`
+	MaxConnections           string `json:"maxConnections,omitempty"`
+	SharedBuffers            string `json:"sharedBuffers,omitempty"`
+	MaxPreparedTransactions  string `json:"maxPreparedTransactions,omitempty"`
+	MemoryLimit              string `json:"memoryLimit,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -38,11 +51,20 @@ type RhpamDevList struct {
 type StatusPhase string
 
 var (
-	NoPhase       StatusPhase = ""
-	PhaseAccepted StatusPhase = "accepted"
-	PhaseComplete StatusPhase = "complete"
+	NoPhase                StatusPhase = ""
+	PhaseInitialized       StatusPhase = "initialized"
+	PhasePrepared          StatusPhase = "prepared"
+	PhaseDatabaseInstalled StatusPhase = "installed database"
+	PhaseComplete          StatusPhase = "complete"
 )
 
 func init() {
 	SchemeBuilder.Register(&RhpamDev{}, &RhpamDevList{})
+}
+
+func (r *RhpamDev) Defaults() {
+}
+
+func (r *RhpamDev) Validate() error {
+	return nil
 }

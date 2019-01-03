@@ -6,12 +6,9 @@ import (
 	gptev1alpha1 "github.com/gpte-naps/rhpam-dev-operator/pkg/apis/gpte/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -19,12 +16,26 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/source"
 )
 
-var log = logf.Log.WithName("controller_rhpamdev")
+const (
+	RhpamVersion                    = "7.1.1.GA"
+	ApplicationName                 = "rhpam"
+	ServiceAccount                  = "rhpam"
+	ServiceAccountRoleBinding       = "rhpam-view"
+	DatabaseCredentialsSecret       = "rhpam-postgresql"
+	DatabaseName                    = "rhpam"
+	DatabasePvc                     = "rhpam-postgresql"
+	DatabaseService                 = "rhpam-postgresql"
+	DatabaseDeployment              = "rhpam-postgresql"
+	DatabaseVolumeCapacity          = "1Gi"
+	DatabaseImage                   = "registry.redhat.io/rhscl/postgresql-96-rhel7:latest"
+	DatabaseMaxConnections          = "100"
+	DatabaseMaxPreparedTransactions = "100"
+	DatabaseSharedBuffers           = "32MB"
+	DatabaseMemoryLimit             = "512Mi"
+	DatabaseInitConfigmap           = "rhpam-postgresql-init"
+)
 
-/**
-* USER ACTION REQUIRED: This is a scaffold file intended for the user to modify with their own Controller
-* business logic.  Delete these comments after modifying this file.*
- */
+var log = logf.Log.WithName("controller_rhpamdev")
 
 // Add creates a new RhpamDev Controller and adds it to the Manager. The Manager will set fields on the Controller
 // and Start it when the Manager is Started.
@@ -34,7 +45,13 @@ func Add(mgr manager.Manager) error {
 
 // newReconciler returns a new reconcile.Reconciler
 func newReconciler(mgr manager.Manager) reconcile.Reconciler {
-	return &ReconcileRhpamDev{client: mgr.GetClient(), scheme: mgr.GetScheme()}
+	client := mgr.GetClient()
+	scheme := mgr.GetScheme()
+	return &ReconcileRhpamDev{
+		client:       client,
+		scheme:       scheme,
+		phaseHandler: NewPhaseHandler(client, scheme),
+	}
 }
 
 // add adds a new Controller to mgr with r as the reconcile.Reconciler
@@ -70,8 +87,9 @@ var _ reconcile.Reconciler = &ReconcileRhpamDev{}
 type ReconcileRhpamDev struct {
 	// This client, initialized using mgr.Client() above, is a split client
 	// that reads objects from the cache and writes to the apiserver
-	client client.Client
-	scheme *runtime.Scheme
+	client       client.Client
+	scheme       *runtime.Scheme
+	phaseHandler *phaseHandler
 }
 
 // Reconcile reads that state of the cluster for a RhpamDev object and makes changes based on the state read
@@ -86,8 +104,8 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 	reqLogger.Info("Reconciling RhpamDev")
 
 	// Fetch the RhpamDev instance
-	instance := &gptev1alpha1.RhpamDev{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, instance)
+	rhpam := &gptev1alpha1.RhpamDev{}
+	err := r.client.Get(context.TODO(), request.NamespacedName, rhpam)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			// Request object not found, could have been deleted after reconcile request.
@@ -96,57 +114,32 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
+		reqLogger.Error(err, "Error when getting rhpamdev object")
 		return reconcile.Result{}, err
 	}
 
-	// Define a new Pod object
-	pod := newPodForCR(instance)
-
-	// Set RhpamDev instance as the owner and controller
-	if err := controllerutil.SetControllerReference(instance, pod, r.scheme); err != nil {
-		return reconcile.Result{}, err
+	rhpamCopy := rhpam.DeepCopy()
+	switch rhpamCopy.Status.Phase {
+	case gptev1alpha1.NoPhase:
+		rhpamState, err := r.phaseHandler.Initialize(rhpamCopy)
+		return r.handleResult(rhpamState, err)
+	case gptev1alpha1.PhaseInitialized:
+		rhpamState, err := r.phaseHandler.Prepare(rhpamCopy)
+		return r.handleResult(rhpamState, err)
+	case gptev1alpha1.PhasePrepared:
+		rhpamState, err := r.phaseHandler.InstallDatabase(rhpamCopy)
+		return r.handleResult(rhpamState, err)
+	case gptev1alpha1.PhaseComplete:
+		reqLogger.Info("RHSSO installation complete")
 	}
 
-	// Check if this Pod already exists
-	found := &corev1.Pod{}
-	err = r.client.Get(context.TODO(), types.NamespacedName{Name: pod.Name, Namespace: pod.Namespace}, found)
-	if err != nil && errors.IsNotFound(err) {
-		reqLogger.Info("Creating a new Pod", "Pod.Namespace", pod.Namespace, "Pod.Name", pod.Name)
-		err = r.client.Create(context.TODO(), pod)
-		if err != nil {
-			return reconcile.Result{}, err
-		}
-
-		// Pod created successfully - don't requeue
-		return reconcile.Result{}, nil
-	} else if err != nil {
-		return reconcile.Result{}, err
-	}
-
-	// Pod already exists - don't requeue
-	reqLogger.Info("Skip reconcile: Pod already exists", "Pod.Namespace", found.Namespace, "Pod.Name", found.Name)
 	return reconcile.Result{}, nil
+
 }
 
-// newPodForCR returns a busybox pod with the same name/namespace as the cr
-func newPodForCR(cr *gptev1alpha1.RhpamDev) *corev1.Pod {
-	labels := map[string]string{
-		"app": cr.Name,
+func (r *ReconcileRhpamDev) handleResult(rhpam *gptev1alpha1.RhpamDev, err error) (reconcile.Result, error) {
+	if err != nil {
+		return reconcile.Result{}, err
 	}
-	return &corev1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      cr.Name + "-pod",
-			Namespace: cr.Namespace,
-			Labels:    labels,
-		},
-		Spec: corev1.PodSpec{
-			Containers: []corev1.Container{
-				{
-					Name:    "busybox",
-					Image:   "busybox",
-					Command: []string{"sleep", "3600"},
-				},
-			},
-		},
-	}
+	return reconcile.Result{Requeue: true}, r.client.Update(context.TODO(), rhpam)
 }
