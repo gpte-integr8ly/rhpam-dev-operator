@@ -1,0 +1,20 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: "{{ .BusinessCentralService }}"
+  namespace: {{ .ApplicationNamespace }}
+  labels:
+    app: "{{ .ApplicationName }}"
+spec:
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+  - name: https
+    port: 8443
+    targetPort: 8443
+  - name: git-ssh
+    port: 8001
+    targetPort: 8001
+  selector:
+    deploymentConfig: "{{ .BusinessCentralDeployment }}"

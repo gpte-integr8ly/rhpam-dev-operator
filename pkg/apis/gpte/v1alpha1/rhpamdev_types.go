@@ -16,7 +16,8 @@ type RhpamDevStatus struct {
 }
 
 type RhpamConfig struct {
-	DatabaseConfig RhpamDatabaseConfig `json:"database,omitempty"`
+	DatabaseConfig        RhpamDatabaseConfig        `json:"database,omitempty"`
+	BusinessCentralConfig RhpamBusinessCentralConfig `json:"businessCentral,omitempty"`
 }
 
 type RhpamDatabaseConfig struct {
@@ -25,6 +26,16 @@ type RhpamDatabaseConfig struct {
 	SharedBuffers            string `json:"sharedBuffers,omitempty"`
 	MaxPreparedTransactions  string `json:"maxPreparedTransactions,omitempty"`
 	MemoryLimit              string `json:"memoryLimit,omitempty"`
+}
+
+type RhpamBusinessCentralConfig struct {
+	PersistentVolumeCapacity string `json:"persistentVolumeCapacity,omitempty"`
+	MemoryLimit              string `json:"memoryLimit,omitempty"`
+	JavaMaxMemRatio          string `json:"javaMaxMemRatio,omitempty"`
+	JavaInitialMemRatio      string `json:"JavaInitialMemRatio,omitempty"`
+	GcMaxSize                string `json:"gcmaxSize,omitempty"`
+	KieMbeans                string `json:"kieMbeans,omitempty"`
+	JavaOptsAppend           string `json:"javaOptsAppend,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -51,11 +62,12 @@ type RhpamDevList struct {
 type StatusPhase string
 
 var (
-	NoPhase                StatusPhase = ""
-	PhaseInitialized       StatusPhase = "initialized"
-	PhasePrepared          StatusPhase = "prepared"
-	PhaseDatabaseInstalled StatusPhase = "installed database"
-	PhaseComplete          StatusPhase = "complete"
+	NoPhase                       StatusPhase = ""
+	PhaseInitialized              StatusPhase = "initialized"
+	PhasePrepared                 StatusPhase = "prepared"
+	PhaseDatabaseInstalled        StatusPhase = "installed database"
+	PhaseBusinessCentralInstalled StatusPhase = "installed business central"
+	PhaseComplete                 StatusPhase = "complete"
 )
 
 func init() {

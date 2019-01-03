@@ -48,12 +48,7 @@ func (ph *phaseHandler) Initialize(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.
 func (ph *phaseHandler) Prepare(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.RhpamDev, error) {
 	log.Info("Phase Prepare")
 
-	if err := ph.createResource(rhpam, ServiceAccount, ServiceAccountResource); err != nil {
-		log.Error(err, "Create Resource Failed", "resource", "ServiceAccount "+ServiceAccount)
-		return nil, err
-	}
-	if err := ph.createResource(rhpam, ServiceAccountRoleBinding, ServiceAccountRoleBindingResource); err != nil {
-		log.Error(err, "Create Resource Failed", "resource", "RoleBinding "+ServiceAccountRoleBinding)
+	if err := ph.createResources(rhpam, []Resource{ServiceAccountResource, ServiceAccountRoleBindingResource}); err != nil {
 		return nil, err
 	}
 
@@ -63,6 +58,7 @@ func (ph *phaseHandler) Prepare(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.Rhp
 }
 
 func (ph *phaseHandler) InstallDatabase(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.RhpamDev, error) {
+	log.Info("Phase InstallDatabase")
 
 	//pg credentials secret
 	dbUser := "user" + generateToken(4)
@@ -87,25 +83,42 @@ func (ph *phaseHandler) InstallDatabase(rhpam *gptev1alpha1.RhpamDev) (*gptev1al
 	}
 
 	//pg database
-	if err := ph.createResource(rhpam, DatabasePvc, DatabasePvcResource); err != nil {
-		log.Error(err, "Create Resource Failed", "resource", "ServiceAccount "+ServiceAccount)
-		return nil, err
-	}
-	if err := ph.createResource(rhpam, DatabaseService, DatabaseServiceResource); err != nil {
-		return nil, err
-	}
-	if err := ph.createResource(rhpam, DatabaseDeployment, DatabaseDeploymentResource); err != nil {
+	if err := ph.createResources(rhpam, []Resource{DatabasePvcResource, DatabaseServiceResource, DatabaseDeploymentConfigResource}); err != nil {
 		return nil, err
 	}
 
-	rhpam.Status.Phase = gptev1alpha1.PhaseComplete
+	rhpam.Status.Phase = gptev1alpha1.PhaseDatabaseInstalled
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
 }
 
-func (ph *phaseHandler) createResource(cr *gptev1alpha1.RhpamDev, resourceName string, template string) error {
+func (ph *phaseHandler) installBusinessCentral(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.RhpamDev, error) {
+	log.Info("Phase InstallBusinessCentral")
+
+	if err := ph.createResources(rhpam, []Resource{BusinessCentralPvcResource, BusinessCentralServiceResource,
+		BusinessCentralRouteResource, BusinessCentralDeploymentResource}); err != nil {
+		return nil, err
+	}
+
+	rhpam.Status.Phase = gptev1alpha1.PhaseBusinessCentralInstalled
+	rhpam.Status.Version = RhpamVersion
+	return rhpam, nil
+}
+
+func (ph *phaseHandler) createResources(cr *gptev1alpha1.RhpamDev, resources []Resource) error {
+	for _, resource := range resources {
+		err := ph.createResource(cr, resource)
+		if err != nil {
+			log.Error(err, "Create Resource Failed", "resource", resource.name)
+			return err
+		}
+	}
+	return nil
+}
+
+func (ph *phaseHandler) createResource(cr *gptev1alpha1.RhpamDev, res Resource) error {
 	resourceHelper := newResourceHelper(cr)
-	resource, err := resourceHelper.createResource(template)
+	resource, err := resourceHelper.createResource(res)
 
 	if err != nil {
 		return fmt.Errorf("Error parsing templates: %s", err)
@@ -114,7 +127,7 @@ func (ph *phaseHandler) createResource(cr *gptev1alpha1.RhpamDev, resourceName s
 	// Try to find the resource, it may already exist
 	selector := types.NamespacedName{
 		Namespace: cr.Namespace,
-		Name:      resourceName,
+		Name:      res.name,
 	}
 	err = ph.client.Get(context.TODO(), selector, resource)
 
@@ -124,10 +137,8 @@ func (ph *phaseHandler) createResource(cr *gptev1alpha1.RhpamDev, resourceName s
 	}
 
 	//Resource does not exist or something went wrong
-	if errors.IsNotFound(err) {
-		log.Info("Creating resource.", "resource", resourceName)
-	} else {
-		return fmt.Errorf("Error reading resource '%s': %s", resourceName, err)
+	if !errors.IsNotFound(err) {
+		return fmt.Errorf("Error reading resource '%s': %s", res.name, err)
 	}
 
 	// Set the CR as the owner of this resource so that when

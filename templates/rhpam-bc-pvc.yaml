@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "{{ .BusinessCentralPvc }}"
+  namespace: "{{ .ApplicationNamespace }}"
+  labels:
+    app: "{{ .ApplicationName }}"
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: "{{ .BusinessCentralVolumeCapacity }}"

@@ -10,55 +10,75 @@ import (
 	gptev1alpha1 "github.com/gpte-naps/rhpam-dev-operator/pkg/apis/gpte/v1alpha1"
 )
 
-const (
-	ServiceAccountResource            = "rhpamdev-service-account"
-	ServiceAccountRoleBindingResource = "rhpamdev-sa-role-binding"
-	DatabasePvcResource               = "rhpamdev-postgresql-pvc"
-	DatabaseServiceResource           = "rhpamdev-postgresql-service"
-	DatabaseDeploymentResource        = "rhpamdev-postgresql-dc"
-)
-
 type TemplateHelper struct {
 	parameters   RhpamdevParameters
 	templatePath string
 }
 
 type RhpamdevParameters struct {
-	ServiceAccount                    string
-	ServiceAccountRoleBinding         string
-	ApplicationName                   string
-	ApplicationNamespace              string
-	PostgresqlPvc                     string
-	PostgresqlPvcCapacity             string
-	PostgresqlService                 string
-	PostgresqlDeployment              string
-	PostgresqlImage                   string
-	PostgresqlSecret                  string
-	PostgresqlMaxConnections          string
-	PostgresqlSharedBuffers           string
-	PostgresqlMaxPreparedTransactions string
-	PostgresqlMemoryLimit             string
-	PostgresqlInitConfigmap           string
+	ServiceAccount                      string
+	ServiceAccountRoleBinding           string
+	ApplicationName                     string
+	ApplicationNamespace                string
+	PostgresqlPvc                       string
+	PostgresqlPvcCapacity               string
+	PostgresqlService                   string
+	PostgresqlDeployment                string
+	PostgresqlImage                     string
+	PostgresqlSecret                    string
+	PostgresqlMaxConnections            string
+	PostgresqlSharedBuffers             string
+	PostgresqlMaxPreparedTransactions   string
+	PostgresqlMemoryLimit               string
+	PostgresqlInitConfigmap             string
+	BusinessCentralService              string
+	BusinessCentralPvc                  string
+	BusinessCentralRoute                string
+	BusinessCentralDeployment           string
+	BusinessCentralVolumeCapacity       string
+	BusinessCentralImageStreamNamespace string
+	BusinessCentralImage                string
+	BusinessCentralImageTag             string
+	BusinessCentralMemoryLimit          string
+	BusinessCentralJavaMaxMemRatio      string
+	BusinessCentralJavaInitialMemRatio  string
+	BusinessCentralGcMaxMetaSize        string
+	KieMbeans                           string
+	BusinessCentralJavaOptsAppend       string
 }
 
 func newTemplateHelper(rhpam *gptev1alpha1.RhpamDev) *TemplateHelper {
 
 	params := RhpamdevParameters{
-		ServiceAccount:                    ServiceAccount,
-		ServiceAccountRoleBinding:         ServiceAccountRoleBinding,
-		ApplicationName:                   ApplicationName,
-		ApplicationNamespace:              rhpam.Namespace,
-		PostgresqlPvc:                     DatabasePvc,
-		PostgresqlPvcCapacity:             valueOrDefault(rhpam.Spec.Config.DatabaseConfig.PersistentVolumeCapacity, DatabaseVolumeCapacity),
-		PostgresqlDeployment:              DatabaseDeployment,
-		PostgresqlService:                 DatabaseService,
-		PostgresqlImage:                   DatabaseImage,
-		PostgresqlSecret:                  DatabaseCredentialsSecret,
-		PostgresqlMaxConnections:          valueOrDefault(rhpam.Spec.Config.DatabaseConfig.MaxConnections, DatabaseMaxConnections),
-		PostgresqlSharedBuffers:           valueOrDefault(rhpam.Spec.Config.DatabaseConfig.SharedBuffers, DatabaseSharedBuffers),
-		PostgresqlMaxPreparedTransactions: valueOrDefault(rhpam.Spec.Config.DatabaseConfig.MaxPreparedTransactions, DatabaseMaxPreparedTransactions),
-		PostgresqlMemoryLimit:             valueOrDefault(rhpam.Spec.Config.DatabaseConfig.MemoryLimit, DatabaseMemoryLimit),
-		PostgresqlInitConfigmap:           DatabaseInitConfigmap,
+		ServiceAccount:                      ServiceAccount,
+		ServiceAccountRoleBinding:           ServiceAccountRoleBinding,
+		ApplicationName:                     ApplicationName,
+		ApplicationNamespace:                rhpam.Namespace,
+		PostgresqlPvc:                       DatabasePvc,
+		PostgresqlPvcCapacity:               valueOrDefault(rhpam.Spec.Config.DatabaseConfig.PersistentVolumeCapacity, DatabaseVolumeCapacity),
+		PostgresqlDeployment:                DatabaseDeployment,
+		PostgresqlService:                   DatabaseService,
+		PostgresqlImage:                     DatabaseImage,
+		PostgresqlSecret:                    DatabaseCredentialsSecret,
+		PostgresqlMaxConnections:            valueOrDefault(rhpam.Spec.Config.DatabaseConfig.MaxConnections, DatabaseMaxConnections),
+		PostgresqlSharedBuffers:             valueOrDefault(rhpam.Spec.Config.DatabaseConfig.SharedBuffers, DatabaseSharedBuffers),
+		PostgresqlMaxPreparedTransactions:   valueOrDefault(rhpam.Spec.Config.DatabaseConfig.MaxPreparedTransactions, DatabaseMaxPreparedTransactions),
+		PostgresqlMemoryLimit:               valueOrDefault(rhpam.Spec.Config.DatabaseConfig.MemoryLimit, DatabaseMemoryLimit),
+		PostgresqlInitConfigmap:             DatabaseInitConfigmap,
+		BusinessCentralService:              BusinessCentralService,
+		BusinessCentralPvc:                  BusinessCentralPvc,
+		BusinessCentralRoute:                BusinessCentralRoute,
+		BusinessCentralDeployment:           BusinessCentralDeployment,
+		BusinessCentralVolumeCapacity:       valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.PersistentVolumeCapacity, BusinessCentralVolumeCapacity),
+		BusinessCentralImageStreamNamespace: BusinessCentralImageStreamNamespace,
+		BusinessCentralImage:                BusinessCentralImage,
+		BusinessCentralImageTag:             BusinessCentralImageTag,
+		BusinessCentralMemoryLimit:          valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.MemoryLimit, BusinessCentralMemoryLimit),
+		BusinessCentralJavaMaxMemRatio:      valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.JavaMaxMemRatio, BusinessCentralJavaMaxMemRatio),
+		BusinessCentralJavaInitialMemRatio:  valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.JavaInitialMemRatio, BusinessCentralJavaInitialMemRatio),
+		BusinessCentralGcMaxMetaSize:        valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.GcMaxSize, BusinessCentralGcMaxMetaSize),
+		KieMbeans:                           valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.KieMbeans, KieMBeans),
+		BusinessCentralJavaOptsAppend:       valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.JavaOptsAppend, BusinessCentralJavaOptsAppend),
 	}
 
 	templatePath := os.Getenv("TEMPLATE_PATH")

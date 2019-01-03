@@ -17,22 +17,46 @@ import (
 )
 
 const (
-	RhpamVersion                    = "7.1.1.GA"
-	ApplicationName                 = "rhpam"
-	ServiceAccount                  = "rhpam"
-	ServiceAccountRoleBinding       = "rhpam-view"
-	DatabaseCredentialsSecret       = "rhpam-postgresql"
-	DatabaseName                    = "rhpam"
-	DatabasePvc                     = "rhpam-postgresql"
-	DatabaseService                 = "rhpam-postgresql"
-	DatabaseDeployment              = "rhpam-postgresql"
-	DatabaseVolumeCapacity          = "1Gi"
-	DatabaseImage                   = "registry.redhat.io/rhscl/postgresql-96-rhel7:latest"
-	DatabaseMaxConnections          = "100"
-	DatabaseMaxPreparedTransactions = "100"
-	DatabaseSharedBuffers           = "32MB"
-	DatabaseMemoryLimit             = "512Mi"
-	DatabaseInitConfigmap           = "rhpam-postgresql-init"
+	RhpamVersion                        = "7.1.1.GA"
+	ApplicationName                     = "rhpam"
+	ServiceAccount                      = "rhpam"
+	ServiceAccountRoleBinding           = "rhpam-view"
+	DatabaseCredentialsSecret           = "rhpam-postgresql"
+	DatabaseName                        = "rhpam"
+	DatabasePvc                         = "rhpam-postgresql"
+	DatabaseService                     = "rhpam-postgresql"
+	DatabaseDeployment                  = "rhpam-postgresql"
+	DatabaseVolumeCapacity              = "1Gi"
+	DatabaseImage                       = "registry.redhat.io/rhscl/postgresql-96-rhel7:latest"
+	DatabaseMaxConnections              = "100"
+	DatabaseMaxPreparedTransactions     = "100"
+	DatabaseSharedBuffers               = "32MB"
+	DatabaseMemoryLimit                 = "512Mi"
+	DatabaseInitConfigmap               = "rhpam-postgresql-init"
+	BusinessCentralService              = "rhpam-bc"
+	BusinessCentralPvc                  = "rhpam-bc"
+	BusinessCentralRoute                = "rhpam-bc"
+	BusinessCentralDeployment           = "rhpam-bc"
+	BusinessCentralVolumeCapacity       = "1Gi"
+	BusinessCentralImageStreamNamespace = "openshift"
+	BusinessCentralImage                = "rhpam71-businesscentral-openshift"
+	BusinessCentralImageTag             = "1.1"
+	BusinessCentralMemoryLimit          = "3Gi"
+	KieAdminUser                        = "adminUser"
+	KieAdminPassword                    = "admin1!"
+	BusinessCentralJavaMaxMemRatio      = "80"
+	BusinessCentralJavaInitialMemRatio  = "0"
+	BusinessCentralGcMaxMetaSize        = "500"
+	KieMBeans                           = "enabled"
+	KieServerControllerUser             = "controllerUser"
+	KieServerControllerPassword         = "controller1!"
+	KieServerUser                       = "executionUser"
+	KieServerPassword                   = "executionUser1!"
+	KieMavenUser                        = "mavenUser"
+	KieMavenPassword                    = "maven1!"
+	EapAdminUserName                    = "eapadmin"
+	EapAdminPassword                    = "eapadmin1!"
+	BusinessCentralJavaOptsAppend       = "-Dorg.uberfire.nio.git.ssh.algorithm=RSA"
 )
 
 var log = logf.Log.WithName("controller_rhpamdev")
@@ -128,6 +152,9 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 		return r.handleResult(rhpamState, err)
 	case gptev1alpha1.PhasePrepared:
 		rhpamState, err := r.phaseHandler.InstallDatabase(rhpamCopy)
+		return r.handleResult(rhpamState, err)
+	case gptev1alpha1.PhaseDatabaseInstalled:
+		rhpamState, err := r.phaseHandler.installBusinessCentral(rhpamCopy)
 		return r.handleResult(rhpamState, err)
 	case gptev1alpha1.PhaseComplete:
 		reqLogger.Info("RHSSO installation complete")

@@ -1,0 +1,90 @@
+kind: DeploymentConfig
+apiVersion: apps.openshift.io/v1
+metadata:
+  name: "{{ .BusinessCentralDeployment }}"
+  namespace: "{{ .ApplicationNamespace }}"
+  labels:
+    app: "{{ .ApplicationName }}"
+spec:
+  strategy:
+    type: Recreate
+  triggers:
+  - type: ImageChange
+    imageChangeParams:
+      automatic: true
+      containerNames:
+      - "{{ .BusinessCentralDeployment }}"
+      from:
+        kind: ImageStreamTag
+        namespace: "{{ .BusinessCentralImageStreamNamespace }}"
+        name: "{{ .BusinessCentralImage }}:{{ .BusinessCentralImageTag }}"
+  - type: ConfigChange
+  replicas: 1
+  selector:
+    deploymentConfig: "{{ .BusinessCentralDeployment }}"
+  template:
+    metadata:
+      name: "{{ .BusinessCentralDeployment }}"
+      labels:
+        deploymentConfig: "{{ .BusinessCentralDeployment }}"
+        app: "{{ .ApplicationName }}"
+    spec:
+      serviceAccountName: "{{ .ServiceAccount }}"
+      terminationGracePeriodSeconds: 60
+      containers:
+      - name: "{{ .BusinessCentralDeployment }}"
+        image: {{ .BusinessCentralImage }}
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: "{{ .BusinessCentralMemoryLimit }}"
+        volumeMounts:
+        - name: "{{ .BusinessCentralPvc }}"
+          mountPath: "/opt/eap/standalone/data/kie"
+        livenessProbe:
+          exec:
+            command:
+            - "/bin/bash"
+            - "-c"
+            - "curl --fail --silent -u 'adminUser:admin1!' http://localhost:8080/kie-wb.jsp"
+          initialDelaySeconds: 180
+          timeoutSeconds: 2
+          periodSeconds: 15
+        readinessProbe:
+          exec:
+            command:
+            - "/bin/bash"
+            - "-c"
+            - "curl --fail --silent -u 'adminUser:admin1!' http://localhost:8080/kie-wb.jsp"
+          initialDelaySeconds: 60
+          timeoutSeconds: 2
+          periodSeconds: 30
+          failureThreshold: 6
+        ports:
+        - name: jolokia
+          containerPort: 8778
+          protocol: TCP
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: https
+          containerPort: 8443
+          protocol: TCP
+        - name: git-ssh
+          containerPort: 8001
+          protocol: TCP
+        env:
+        - name: JAVA_MAX_MEM_RATIO
+          value: "{{ .BusinessCentralJavaMaxMemRatio }}"
+        - name: JAVA_INITIAL_MEM_RATIO
+          value: "{{ .BusinessCentralJavaInitialMemRatio }}"
+        - name: GC_MAX_METASPACE_SIZE
+          value: "{{ .BusinessCentralGcMaxMetaSize }}"            
+        - name: KIE_MBEANS
+          value: "{{ .KieMbeans }}"
+        - name: JAVA_OPTS_APPEND
+          value: "{{ .BusinessCentralJavaOptsAppend }}"
+      volumes:
+      - name: "{{ .BusinessCentralPvc }}"
+        persistentVolumeClaim:
+          claimName: "{{ .BusinessCentralPvc }}"

@@ -1,0 +1,17 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+id: "{{ .BusinessCentralRoute }}-https"
+metadata:
+  name: {{ .BusinessCentralRoute }}
+  namespace: {{ .ApplicationNamespace }}
+  labels:
+    app: "{{ .ApplicationName }}"
+  annotations:
+    haproxy.router.openshift.io/timeout: 60s
+spec:
+  to:
+    name: "{{ .BusinessCentralService }}"
+  port:
+    targetPort: http
+  tls:
+    termination: edge
