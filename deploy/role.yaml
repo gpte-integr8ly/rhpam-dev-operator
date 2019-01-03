@@ -11,11 +11,17 @@ rules:
   - services
   - endpoints
   - persistentvolumeclaims
-  - events
   - configmaps
   - secrets
+  - serviceaccounts
+  verbs: ["create", "delete", "deletecollection", "get", "list", "update", "watch"]
+- apiGroups:
+  - ""
+  resources:
+  - events
   verbs:
-  - '*'
+  - get
+  - list
 - apiGroups:
   - ""
   resources:
@@ -23,24 +29,19 @@ rules:
   verbs:
   - get
 - apiGroups:
-  - apps
+  - apps.openshift.io
   resources:
-  - deployments
-  - daemonsets
-  - replicasets
-  - statefulsets
-  verbs:
-  - '*'
+  - deploymentconfigs
+  verbs: ["create", "delete", "deletecollection", "get", "list", "update", "watch"]
 - apiGroups:
-  - monitoring.coreos.com
+  - route.openshift.io
+  attributeRestrictions: null
   resources:
-  - servicemonitors
-  verbs:
-  - get
-  - create
+  - routes
+  verbs: ["create", "delete", "deletecollection", "get", "list", "update", "watch"]
 - apiGroups:
   - gpte.integreatly.org
   resources:
-  - '*'
-  verbs:
-  - '*'
+  - rhpamdevs
+  - rhpamdevs/finalizers
+  verbs: ["create", "delete", "deletecollection", "get", "list", "update", "watch"]
