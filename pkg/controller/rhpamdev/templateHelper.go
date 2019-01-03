@@ -45,6 +45,21 @@ type RhpamdevParameters struct {
 	BusinessCentralGcMaxMetaSize        string
 	KieMbeans                           string
 	BusinessCentralJavaOptsAppend       string
+	KieServerRoute                      string
+	KieServerService                    string
+	KieServerDeployment                 string
+	KieServerImageStreamNamespace       string
+	KieServerImage                      string
+	KieServerImageTag                   string
+	KieServerMemoryLimit                string
+	KieServerJavaMaxMemRatio            string
+	KieServerJavaInitialMemRatio        string
+	KieServerDroolsFilterClasses        string
+	KieServerBypassAuthUser             string
+	KieServerControllerProtocol         string
+	KieServerId                         string
+	KieMavenUser                        string
+	KieMavenPassword                    string
 }
 
 func newTemplateHelper(rhpam *gptev1alpha1.RhpamDev) *TemplateHelper {
@@ -79,6 +94,21 @@ func newTemplateHelper(rhpam *gptev1alpha1.RhpamDev) *TemplateHelper {
 		BusinessCentralGcMaxMetaSize:        valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.GcMaxSize, BusinessCentralGcMaxMetaSize),
 		KieMbeans:                           valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.KieMbeans, KieMBeans),
 		BusinessCentralJavaOptsAppend:       valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.JavaOptsAppend, BusinessCentralJavaOptsAppend),
+		KieServerRoute:                      KieServerRoute,
+		KieServerService:                    KieServerService,
+		KieServerDeployment:                 KieServerDeployment,
+		KieServerImageStreamNamespace:       KieServerImageStreamNamespace,
+		KieServerImage:                      KieServerImage,
+		KieServerImageTag:                   KieServerImageTag,
+		KieServerMemoryLimit:                valueOrDefault(rhpam.Spec.Config.KieServerConfig.MemoryLimit, KieServerMemoryLimit),
+		KieServerJavaMaxMemRatio:            valueOrDefault(rhpam.Spec.Config.KieServerConfig.JavaMaxMemRatio, KieServerJavaMaxMemRatio),
+		KieServerJavaInitialMemRatio:        valueOrDefault(rhpam.Spec.Config.KieServerConfig.JavaInitialMemRatio, KieServerJavaInitialMemRatio),
+		KieServerDroolsFilterClasses:        valueOrDefault(rhpam.Spec.Config.KieServerConfig.DroolsFilterClasses, KieServerDroolsFilterClasses),
+		KieServerBypassAuthUser:             valueOrDefault(rhpam.Spec.Config.KieServerConfig.BypassAuthUser, KieServerBypassAuthUser),
+		KieServerControllerProtocol:         KieServerControllerProtocol,
+		KieServerId:                         KieServerId,
+		KieMavenUser:                        KieMavenUser,
+		KieMavenPassword:                    KieMavenPassword,
 	}
 
 	templatePath := os.Getenv("TEMPLATE_PATH")

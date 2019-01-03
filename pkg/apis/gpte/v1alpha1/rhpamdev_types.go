@@ -18,6 +18,7 @@ type RhpamDevStatus struct {
 type RhpamConfig struct {
 	DatabaseConfig        RhpamDatabaseConfig        `json:"database,omitempty"`
 	BusinessCentralConfig RhpamBusinessCentralConfig `json:"businessCentral,omitempty"`
+	KieServerConfig       RhpamKieServerConfig       `json:"kieserver,omitempty"`
 }
 
 type RhpamDatabaseConfig struct {
@@ -36,6 +37,16 @@ type RhpamBusinessCentralConfig struct {
 	GcMaxSize                string `json:"gcmaxSize,omitempty"`
 	KieMbeans                string `json:"kieMbeans,omitempty"`
 	JavaOptsAppend           string `json:"javaOptsAppend,omitempty"`
+}
+
+type RhpamKieServerConfig struct {
+	MemoryLimit         string `json:"memoryLimit,omitempty"`
+	JavaMaxMemRatio     string `json:"javaMaxMemRatio,omitempty"`
+	JavaInitialMemRatio string `json:"JavaInitialMemRatio,omitempty"`
+	KieMbeans           string `json:"kieMbeans,omitempty"`
+	KieServerId         string `json:"kieserverId,omitempty"`
+	DroolsFilterClasses string `json:"filterClasses,omitempty"`
+	BypassAuthUser      string `json:"bypassAuthUser,omitEmpty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -65,8 +76,10 @@ var (
 	NoPhase                       StatusPhase = ""
 	PhaseInitialized              StatusPhase = "initialized"
 	PhasePrepared                 StatusPhase = "prepared"
-	PhaseDatabaseInstalled        StatusPhase = "installed database"
-	PhaseBusinessCentralInstalled StatusPhase = "installed business central"
+	PhaseDatabaseInstalled        StatusPhase = "database installed"
+	PhaseBusinessCentralInstalled StatusPhase = "business central installed"
+	PhaseDatabaseReady            StatusPhase = "database ready"
+	PhaseKieServerInstalled       StatusPhase = "kie server installed"
 	PhaseComplete                 StatusPhase = "complete"
 )
 

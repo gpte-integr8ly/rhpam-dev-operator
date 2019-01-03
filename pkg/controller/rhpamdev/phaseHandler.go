@@ -6,6 +6,7 @@ import (
 	"math/rand"
 
 	gptev1alpha1 "github.com/gpte-naps/rhpam-dev-operator/pkg/apis/gpte/v1alpha1"
+	appsv1 "github.com/openshift/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -101,6 +102,33 @@ func (ph *phaseHandler) installBusinessCentral(rhpam *gptev1alpha1.RhpamDev) (*g
 	}
 
 	rhpam.Status.Phase = gptev1alpha1.PhaseBusinessCentralInstalled
+	rhpam.Status.Version = RhpamVersion
+	return rhpam, nil
+}
+
+func (ph *phaseHandler) WaitForDatabase(rhpam *gptev1alpha1.RhpamDev) (bool, *gptev1alpha1.RhpamDev, error) {
+
+	ready, err := ph.isDatabaseReady(rhpam)
+	if err != nil {
+		return false, nil, fmt.Errorf("Error checking for database : %s", err)
+	}
+
+	if ready {
+		rhpam.Status.Phase = gptev1alpha1.PhaseDatabaseReady
+		rhpam.Status.Version = RhpamVersion
+	}
+
+	return ready, rhpam, nil
+}
+
+func (ph *phaseHandler) installKieServer(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.RhpamDev, error) {
+	log.Info("Phase InstallKieServer")
+
+	if err := ph.createResources(rhpam, []Resource{KieServerServiceResource, KieServerRouteResource, KieServerDeploymentResource}); err != nil {
+		return nil, err
+	}
+
+	rhpam.Status.Phase = gptev1alpha1.PhaseComplete
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
 }
@@ -210,6 +238,21 @@ func (ph *phaseHandler) createConfigmap(cr *gptev1alpha1.RhpamDev, name string, 
 
 	controllerutil.SetControllerReference(cr, configmap, ph.scheme)
 	return ph.client.Create(context.TODO(), configmap)
+}
+
+func (ph *phaseHandler) isDatabaseReady(cr *gptev1alpha1.RhpamDev) (bool, error) {
+	resource := appsv1.DeploymentConfig{}
+
+	selector := types.NamespacedName{
+		Namespace: cr.Namespace,
+		Name:      DatabaseDeployment,
+	}
+
+	if err := ph.client.Get(context.TODO(), selector, &resource); err != nil {
+		return false, err
+	}
+
+	return resource.Status.ReadyReplicas == 1, nil
 }
 
 func generateToken(n int) string {

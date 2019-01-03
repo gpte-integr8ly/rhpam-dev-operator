@@ -15,8 +15,11 @@ const (
 	DatabaseDeploymentTemplate        = "rhpamdev-postgresql-dc"
 	BusinessCentralRouteTemplate      = "rhpamdev-bc-route"
 	BusinessCentralServiceTemplate    = "rhpamdev-bc-service"
-	BusinessCentralPvcTemplate        = "rhpam-bc-pvc"
-	BusinessCentralDeploymentTemplate = "rhpam-bc-dc"
+	BusinessCentralPvcTemplate        = "rhpamdev-bc-pvc"
+	BusinessCentralDeploymentTemplate = "rhpamdev-bc-dc"
+	KieServerRouteTemplate            = "rhpamdev-ks-route"
+	KieServerServiceTemplate          = "rhpamdev-ks-service"
+	KieServerDeploymentTemplate       = "rhpamdev-ks-dc"
 )
 
 type Resource struct {
@@ -34,6 +37,9 @@ var (
 	BusinessCentralServiceResource    Resource = Resource{name: BusinessCentralService, template: BusinessCentralServiceTemplate}
 	BusinessCentralRouteResource      Resource = Resource{name: BusinessCentralRoute, template: BusinessCentralRouteTemplate}
 	BusinessCentralPvcResource        Resource = Resource{name: BusinessCentralPvc, template: BusinessCentralPvcTemplate}
+	KieServerRouteResource            Resource = Resource{name: KieServerRoute, template: KieServerRouteTemplate}
+	KieServerServiceResource          Resource = Resource{name: KieServerService, template: KieServerServiceTemplate}
+	KieServerDeploymentResource       Resource = Resource{name: KieServerDeployment, template: KieServerDeploymentTemplate}
 )
 
 type ResourceHelper struct {

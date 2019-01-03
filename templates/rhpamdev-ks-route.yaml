@@ -1,0 +1,17 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+id: "{{ .KieServerRoute }}-https"
+metadata:
+  name: {{ .KieServerRoute }}
+  namespace: {{ .ApplicationNamespace }}
+  labels:
+    app: "{{ .ApplicationName }}"
+  annotations:
+    haproxy.router.openshift.io/timeout: 60s
+spec:
+  to:
+    name: "{{ .KieServerService }}"
+  port:
+    targetPort: http
+  tls:
+    termination: edge

@@ -57,6 +57,19 @@ const (
 	EapAdminUserName                    = "eapadmin"
 	EapAdminPassword                    = "eapadmin1!"
 	BusinessCentralJavaOptsAppend       = "-Dorg.uberfire.nio.git.ssh.algorithm=RSA"
+	KieServerRoute                      = "rhpam-kieserver"
+	KieServerService                    = "rhpam-kieserver"
+	KieServerDeployment                 = "rhpam-kieserver"
+	KieServerImageStreamNamespace       = "openshift"
+	KieServerImage                      = "rhpam71-kieserver-openshift"
+	KieServerImageTag                   = "1.1"
+	KieServerMemoryLimit                = "2Gi"
+	KieServerJavaMaxMemRatio            = "80"
+	KieServerJavaInitialMemRatio        = "0"
+	KieServerDroolsFilterClasses        = "true"
+	KieServerBypassAuthUser             = "false"
+	KieServerControllerProtocol         = "ws"
+	KieServerId                         = "kieserver-dev"
 )
 
 var log = logf.Log.WithName("controller_rhpamdev")
@@ -155,6 +168,15 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 		return r.handleResult(rhpamState, err)
 	case gptev1alpha1.PhaseDatabaseInstalled:
 		rhpamState, err := r.phaseHandler.installBusinessCentral(rhpamCopy)
+		return r.handleResult(rhpamState, err)
+	case gptev1alpha1.PhaseBusinessCentralInstalled:
+		ready, rhpamState, err := r.phaseHandler.WaitForDatabase(rhpamCopy)
+		if !ready && err == nil {
+			return reconcile.Result{Requeue: true}, nil
+		}
+		return r.handleResult(rhpamState, err)
+	case gptev1alpha1.PhaseDatabaseReady:
+		rhpamState, err := r.phaseHandler.installKieServer(rhpamCopy)
 		return r.handleResult(rhpamState, err)
 	case gptev1alpha1.PhaseComplete:
 		reqLogger.Info("RHSSO installation complete")

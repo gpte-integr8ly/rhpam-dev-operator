@@ -1,0 +1,132 @@
+kind: DeploymentConfig
+apiVersion: apps.openshift.io/v1
+metadata:
+  name: "{{ .KieServerDeployment }}"
+  namespace: "{{ .ApplicationNamespace }}"
+  labels:
+    app: "{{ .ApplicationName }}"
+spec:
+  strategy:
+    type: Recreate
+  triggers:
+  - type: ImageChange
+    imageChangeParams:
+      automatic: true
+      containerNames:
+      - "{{ .KieServerDeployment }}"
+      from:
+        kind: ImageStreamTag
+        namespace: "{{ .KieServerImageStreamNamespace }}"
+        name: "{{ .KieServerImage }}:{{ .KieServerImageTag }}"
+  - type: ConfigChange
+  replicas: 1
+  selector:
+    deploymentConfig: "{{ .KieServerDeployment }}"
+  template:
+    metadata:
+      name: "{{ .KieServerDeployment }}"
+      labels:
+        deploymentConfig: "{{ .KieServerDeployment }}"
+        app: "{{ .ApplicationName }}"
+    spec:
+      serviceAccountName: "{{ .ServiceAccount }}"
+      terminationGracePeriodSeconds: 60
+      containers:
+      - name: "{{ .KieServerDeployment }}"
+        image: {{ .KieServerImage }}
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: "{{ .KieServerMemoryLimit }}"
+        livenessProbe:
+          exec:
+            command:
+            - "/bin/bash"
+            - "-c"
+            - "curl --fail --silent -u 'adminUser:admin1!' http://localhost:8080/services/rest/server/healthcheck"
+          initialDelaySeconds: 180
+          timeoutSeconds: 2
+          periodSeconds: 15
+          failureThreshold: 3
+        readinessProbe:
+          exec:
+            command:
+            - "/bin/bash"
+            - "-c"
+            - "curl --fail --silent -u 'adminUser:admin1!' http://localhost:8080/services/rest/server/readycheck"
+          initialDelaySeconds: 30
+          timeoutSeconds: 2
+          periodSeconds: 30
+          failureThreshold: 6
+        ports:
+        - name: jolokia
+          containerPort: 8778
+          protocol: TCP
+        - name: http
+          containerPort: 8080
+          protocol: TCP
+        - name: https
+          containerPort: 8443
+          protocol: TCP
+        env:
+        - name: JAVA_MAX_MEM_RATIO
+          value: "{{ .KieServerJavaMaxMemRatio }}"
+        - name: JAVA_INITIAL_MEM_RATIO
+          value: "{{ .KieServerJavaInitialMemRatio }}"            
+        - name: DATASOURCES
+          value: "RHPAM"
+        - name: RHPAM_DRIVER
+          value: "postgresql"
+        - name: RHPAM_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ .PostgresqlSecret }}
+              key: database-user
+        - name: RHPAM_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .PostgresqlSecret }}
+              key: database-password
+        - name: RHPAM_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: {{ .PostgresqlSecret }}
+              key: database-name
+        - name: RHPAM_SERVICE_HOST
+          value: "{{ .PostgresqlService }}"
+        - name: RHPAM_SERVICE_PORT
+          value: "5432"
+        - name: TIMER_SERVICE_DATA_STORE
+          value: "{{ .PostgresqlService }}"
+        - name: KIE_SERVER_PERSISTENCE_DIALECT
+          value: "org.hibernate.dialect.PostgreSQLDialect"
+        - name: DROOLS_SERVER_FILTER_CLASSES
+          value: "{{ .KieServerDroolsFilterClasses }}"
+        - name: KIE_MBEANS
+          value: "{{ .KieMbeans }}"
+        - name: KIE_SERVER_BYPASS_AUTH_USER
+          value: "{{ .KieServerBypassAuthUser }}"
+        - name: KIE_SERVER_CONTROLLER_SERVICE
+          value: "{{ .BusinessCentralService }}"
+        - name: KIE_SERVER_CONTROLLER_PROTOCOL
+          value: "{{ .KieServerControllerProtocol }}"
+        - name: KIE_SERVER_ID
+          value: "{{ .KieServerId }}"
+        - name: KIE_SERVER_HOST
+          value: "{{ .KieServerService }}"
+        - name: KIE_SERVER_PORT
+          value: "8080"
+        - name: KIE_SERVER_PROTOCOL
+          value: "http"
+        - name: KIE_SERVER_PERSISTENCE_DS
+          value: "java:/jboss/datasources/rhpam"
+        - name: MAVEN_REPOS
+          value: "RHPAMCENTR"
+        - name: RHPAMCENTR_MAVEN_REPO_SERVICE
+          value: "{{ .BusinessCentralService }}"
+        - name: RHPAMCENTR_MAVEN_REPO_PATH
+          value: "/maven2/"
+        - name: RHPAMCENTR_MAVEN_REPO_USERNAME
+          value: "{{ .KieMavenUser }}"
+        - name: RHPAMCENTR_MAVEN_REPO_PASSWORD
+          value: "{{ .KieMavenPassword }}"
