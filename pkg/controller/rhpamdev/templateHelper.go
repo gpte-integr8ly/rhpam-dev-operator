@@ -89,7 +89,7 @@ func newTemplateHelper(rhpam *gptev1alpha1.RhpamDev) *TemplateHelper {
 		BusinessCentralMemoryLimit:          valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.MemoryLimit, BusinessCentralMemoryLimit),
 		BusinessCentralJavaMaxMemRatio:      valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.JavaMaxMemRatio, BusinessCentralJavaMaxMemRatio),
 		BusinessCentralJavaInitialMemRatio:  valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.JavaInitialMemRatio, BusinessCentralJavaInitialMemRatio),
-		BusinessCentralGcMaxMetaSize:        valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.GcMaxSize, BusinessCentralGcMaxMetaSize),
+		BusinessCentralGcMaxMetaSize:        valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.GcMaxMetaSize, BusinessCentralGcMaxMetaSize),
 		KieMbeans:                           valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.KieMbeans, KieMBeans),
 		BusinessCentralJavaOptsAppend:       valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.JavaOptsAppend, BusinessCentralJavaOptsAppend),
 		KieServerRoute:                      KieServerRoute,

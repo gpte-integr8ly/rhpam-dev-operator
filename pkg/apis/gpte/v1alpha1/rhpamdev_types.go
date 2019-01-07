@@ -33,8 +33,8 @@ type RhpamBusinessCentralConfig struct {
 	PersistentVolumeCapacity string `json:"persistentVolumeCapacity,omitempty"`
 	MemoryLimit              string `json:"memoryLimit,omitempty"`
 	JavaMaxMemRatio          string `json:"javaMaxMemRatio,omitempty"`
-	JavaInitialMemRatio      string `json:"JavaInitialMemRatio,omitempty"`
-	GcMaxSize                string `json:"gcmaxSize,omitempty"`
+	JavaInitialMemRatio      string `json:"javaInitialMemRatio,omitempty"`
+	GcMaxMetaSize            string `json:"gcMaxMetaSize,omitempty"`
 	KieMbeans                string `json:"kieMbeans,omitempty"`
 	JavaOptsAppend           string `json:"javaOptsAppend,omitempty"`
 }
@@ -42,7 +42,7 @@ type RhpamBusinessCentralConfig struct {
 type RhpamKieServerConfig struct {
 	MemoryLimit         string `json:"memoryLimit,omitempty"`
 	JavaMaxMemRatio     string `json:"javaMaxMemRatio,omitempty"`
-	JavaInitialMemRatio string `json:"JavaInitialMemRatio,omitempty"`
+	JavaInitialMemRatio string `json:"javaInitialMemRatio,omitempty"`
 	KieMbeans           string `json:"kieMbeans,omitempty"`
 	KieServerId         string `json:"kieserverId,omitempty"`
 	DroolsFilterClasses string `json:"filterClasses,omitempty"`
