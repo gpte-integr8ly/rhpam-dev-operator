@@ -1,0 +1,27 @@
+apiVersion: gpte.integreatly.org/v1alpha1
+kind: RhpamDev
+metadata:
+  name: example-rhpamdev
+spec:
+  database:
+    persistentVolumeCapacity: "1Gi"
+    maxConnections: "100"
+    sharedBuffers: "32MB"
+    maxPreparedTransactions: "100"
+    memoryLimit: "512Mi"
+  businessCentral:
+    persistentVolumeCapacity: "1Gi"
+    memoryLimit: "3Gi"
+    javaMaxMemRatio: "80"
+    javaInitialMemRatio: "0"
+    gcMaxMetaSize: "500"
+    kieMbeans: "enabled"
+    javaOptsAppend: "-Dorg.uberfire.nio.git.ssh.algorithm=RSA"
+  kieserver:
+    memoryLimit: "2Gi"
+    javaMaxMemRatio: "80"
+    javaInitialMemRatio: "0"
+    kieMbeans: "enabled"
+    kieserverId: "kieserver-dev"
+    filterClasses: "true"
+    bypassAuthUser: "false"
