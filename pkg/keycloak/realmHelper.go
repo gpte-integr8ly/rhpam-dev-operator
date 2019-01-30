@@ -1,4 +1,4 @@
-package rhpamdev
+package keycloak
 
 import (
 	"bytes"
@@ -40,11 +40,11 @@ func NewRealmHelper() *RealmHelper {
 	}
 }
 
-func (r *RealmHelper) loadRealmTemplate(params RealmParameters) ([]byte, error) {
+func (r *RealmHelper) LoadRealmTemplate(params RealmParameters) ([]byte, error) {
 	return loadTemplate("realm", r.realmTemplatePath, params)
 }
 
-func (r *RealmHelper) loadRealmClientTemplate(params RealmClientParameters) ([]byte, error) {
+func (r *RealmHelper) LoadRealmClientTemplate(params RealmClientParameters) ([]byte, error) {
 	return loadTemplate("realm-client", r.realmTemplatePath, params)
 }
 

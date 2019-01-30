@@ -68,12 +68,12 @@ func (ph *phaseHandler) ProvisionRealm(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1a
 	if err != nil {
 		return nil, err
 	}
-	realmHelper := NewRealmHelper()
+	realmHelper := keycloak.NewRealmHelper()
 
 	realmId := rhpam.Name + "-" + generateToken(6)
 	log.Info("Creating Realm", "Realm Id", realmId)
-	realmParams := RealmParameters{RealmId: realmId}
-	json, err := realmHelper.loadRealmTemplate(realmParams)
+	realmParams := keycloak.RealmParameters{RealmId: realmId}
+	json, err := realmHelper.LoadRealmTemplate(realmParams)
 	if err != nil {
 		return nil, err
 	}
@@ -85,7 +85,7 @@ func (ph *phaseHandler) ProvisionRealm(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1a
 	//create realm clients in keycloak
 	//business-central
 	bcClient := "rhpambc"
-	bcRealmClientParams := RealmClientParameters{ClientId: bcClient}
+	bcRealmClientParams := keycloak.RealmClientParameters{ClientId: bcClient}
 	bcRealmClientParams.RootUrl = "https://" + BusinessCentralDeployment + "-" + rhpam.Namespace + "." + rhpam.Spec.Domain
 	bcRealmClientParams.AdminUrl = bcRealmClientParams.RootUrl
 	bcRealmClientParams.RedirectUris = "\"" + bcRealmClientParams.RootUrl + "/*\""
@@ -94,7 +94,7 @@ func (ph *phaseHandler) ProvisionRealm(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1a
 	bcRealmClientParams.ImplicitFlowEnabled = "false"
 	bcRealmClientParams.DirectAcessGrantEnabled = "true"
 	bcRealmClientParams.PublicClient = "false"
-	json1, err := realmHelper.loadRealmClientTemplate(bcRealmClientParams)
+	json1, err := realmHelper.LoadRealmClientTemplate(bcRealmClientParams)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +104,7 @@ func (ph *phaseHandler) ProvisionRealm(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1a
 
 	//kie-server
 	ksClient := "rhpamks"
-	ksRealmClientParams := RealmClientParameters{ClientId: ksClient}
+	ksRealmClientParams := keycloak.RealmClientParameters{ClientId: ksClient}
 	ksRealmClientParams.RootUrl = "https://" + KieServerDeployment + "-" + rhpam.Namespace + "." + rhpam.Spec.Domain
 	ksRealmClientParams.AdminUrl = ksRealmClientParams.RootUrl
 	ksRealmClientParams.RedirectUris = "\"" + ksRealmClientParams.RootUrl + "/*\""
@@ -113,7 +113,7 @@ func (ph *phaseHandler) ProvisionRealm(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1a
 	ksRealmClientParams.ImplicitFlowEnabled = "false"
 	ksRealmClientParams.DirectAcessGrantEnabled = "true"
 	ksRealmClientParams.PublicClient = "false"
-	json2, err := realmHelper.loadRealmClientTemplate(ksRealmClientParams)
+	json2, err := realmHelper.LoadRealmClientTemplate(ksRealmClientParams)
 	if err != nil {
 		return nil, err
 	}
@@ -122,7 +122,7 @@ func (ph *phaseHandler) ProvisionRealm(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1a
 	}
 
 	//kie-server direct
-	ksdRealmClientParams := RealmClientParameters{ClientId: "rhpamks-direct"}
+	ksdRealmClientParams := keycloak.RealmClientParameters{ClientId: "rhpamks-direct"}
 	ksdRealmClientParams.RootUrl = "https://" + KieServerDeployment + "-" + rhpam.Namespace + "." + rhpam.Spec.Domain
 	ksdRealmClientParams.AdminUrl = ksdRealmClientParams.RootUrl
 	ksdRealmClientParams.RedirectUris = "\"" + ksdRealmClientParams.RootUrl + "/*\""
@@ -131,7 +131,7 @@ func (ph *phaseHandler) ProvisionRealm(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1a
 	ksdRealmClientParams.ImplicitFlowEnabled = "false"
 	ksdRealmClientParams.DirectAcessGrantEnabled = "true"
 	ksdRealmClientParams.PublicClient = "true"
-	json3, err := realmHelper.loadRealmClientTemplate(ksdRealmClientParams)
+	json3, err := realmHelper.LoadRealmClientTemplate(ksdRealmClientParams)
 	if err != nil {
 		return nil, err
 	}
