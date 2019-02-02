@@ -57,7 +57,7 @@ func NewKeycloakFactory() *KeycloakFactory {
 type T interface{}
 
 // Generic create function for creating new Keycloak resources
-func (c *Client) create(obj []byte, resourcePath, resourceName string) error {
+func (c *Client) create(obj []byte, resourcePath, resourceName string, statuscode int) error {
 	req, err := http.NewRequest(
 		"POST",
 		fmt.Sprintf("%s/auth/admin/%s", c.URL, resourcePath),
@@ -78,8 +78,7 @@ func (c *Client) create(obj []byte, resourcePath, resourceName string) error {
 	}
 	defer res.Body.Close()
 
-	log.Info("Response status", "statuscode", res.StatusCode, "status", res.Status)
-	if res.StatusCode != 201 {
+	if res.StatusCode != statuscode {
 		return fmt.Errorf("failed to create %s: (%d) %s", resourceName, res.StatusCode, res.Status)
 	}
 
@@ -87,11 +86,44 @@ func (c *Client) create(obj []byte, resourcePath, resourceName string) error {
 }
 
 func (c *Client) CreateRealm(json []byte) error {
-	return c.create(json, "realms", "realm")
+	return c.create(json, "realms", "realm", 201)
 }
 
-func (c *Client) CreateClient(json []byte, realmName string) error {
-	return c.create(json, fmt.Sprintf("realms/%s/clients", realmName), "client")
+func (c *Client) CreateClient(json []byte, realm string) error {
+	return c.create(json, fmt.Sprintf("realms/%s/clients", realm), "client", 201)
+}
+
+func (c *Client) CreateRole(json []byte, realm string) error {
+	return c.create(json, fmt.Sprintf("realms/%s/roles", realm), "role", 201)
+}
+
+func (c *Client) CreateUser(json []byte, realm string) error {
+	return c.create(json, fmt.Sprintf("realms/%s/users", realm), "user", 201)
+}
+
+func (c *Client) CreateUserRole(json []byte, user, realm string) error {
+	return c.create(json, fmt.Sprintf("realms/%s/users/%s/role-mappings/realm", realm, user), "user-role", 204)
+}
+
+func (c *Client) FindUserByUsername(name, realm string) (*KeycloakApiUser, error) {
+	result, err := c.get(fmt.Sprintf("realms/%s/users?username=%s", realm, name), "user", func(body []byte) (T, error) {
+		var users []*KeycloakApiUser
+		if err := json.Unmarshal(body, &users); err != nil {
+			return nil, err
+		}
+		if len(users) == 0 {
+			return &KeycloakApiUser{}, nil
+		}
+		return users[0], nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	user := result.(*KeycloakApiUser)
+	if user.ID == "" {
+		return nil, errors.New("Not Found")
+	}
+	return user, nil
 }
 
 // Generic get function for returning a Keycloak resource
@@ -128,13 +160,13 @@ func (c *Client) get(resourcePath, resourceName string, unMarshalFunc func(body 
 	obj, err := unMarshalFunc(body)
 	if err != nil {
 		log.Error(err, "Error unmarshalling response")
+		return nil, err
 	}
 
 	return obj, nil
 }
 
 func (c *Client) GetClientSecret(clientId, realmName string) (string, error) {
-	//"https://{{ rhsso_route }}/auth/admin/realms/{{ rhsso_realm }}/clients/{{ rhsso_client_id }}/client-secret"
 	result, err := c.get(fmt.Sprintf("realms/%s/clients/%s/client-secret", realmName, clientId), "client-secret", func(body []byte) (T, error) {
 		res := map[string]string{}
 		if err := json.Unmarshal(body, &res); err != nil {
@@ -146,6 +178,48 @@ func (c *Client) GetClientSecret(clientId, realmName string) (string, error) {
 		return "", errors.Wrap(err, "failed to get: "+fmt.Sprintf("realms/%s/clients/%s/client-secret", realmName, clientId))
 	}
 	return result.(string), nil
+}
+
+func (c *Client) GetUser(userID, realmName string) (*KeycloakUser, error) {
+	result, err := c.get(fmt.Sprintf("realms/%s/users/%s", realmName, userID), "user", func(body []byte) (T, error) {
+		user := &KeycloakApiUser{}
+		err := json.Unmarshal(body, user)
+		return user, err
+	})
+	ret := &KeycloakUser{
+		KeycloakApiUser: result.(*KeycloakApiUser),
+	}
+	return ret, err
+}
+
+func (c *Client) GetRole(roleName, realmName string) (*KeycloakRole, error) {
+	result, err := c.get(fmt.Sprintf("realms/%s/roles/%s", realmName, roleName), "role", func(body []byte) (T, error) {
+		role := &KeycloakRole{}
+		err := json.Unmarshal(body, role)
+		return role, err
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get: "+fmt.Sprintf("realms/%s/roles/%s", realmName, roleName))
+	}
+	return result.(*KeycloakRole), nil
+}
+
+func (c *Client) GetRoleMappings(user, realm string) ([]*KeycloakRole, error) {
+	result, err := c.get(fmt.Sprintf("realms/%s/users/%s/role-mappings/realm", realm, user), "role-mapping", func(body []byte) (T, error) {
+		var roleMappings []*KeycloakRole
+		err := json.Unmarshal(body, &roleMappings)
+		return roleMappings, err
+	})
+	if err != nil {
+		return nil, err
+	}
+	res, ok := result.([]*KeycloakRole)
+
+	if !ok {
+		return nil, errors.New("error decoding list clients response")
+	}
+
+	return res, nil
 }
 
 // Generic list function for listing Keycloak resources
@@ -264,9 +338,19 @@ func defaultRequester() Requester {
 type KeycloakInterface interface {
 	CreateRealm(json []byte) error
 
+	CreateRole(json []byte, realm string) error
+
 	CreateClient(json []byte, realmName string) error
 	GetClientSecret(clientId, realmName string) (string, error)
 	ListClients(realmName string) ([]*KeycloakClient, error)
+
+	CreateUser(json []byte, realmName string) error
+	FindUserByUsername(name, realm string) (*KeycloakApiUser, error)
+	GetUser(userID, realmName string) (*KeycloakUser, error)
+
+	GetRole(roleName string, realmName string) (*KeycloakRole, error)
+	GetRoleMappings(user string, realm string) ([]*KeycloakRole, error)
+	CreateUserRole(json []byte, userId, realm string) error
 }
 
 type KeycloakClientFactory interface {

@@ -1,0 +1,24 @@
+apiVersion: rhpam.integreatly.org/v1alpha1
+kind: RhpamUser
+metadata:
+  name: example-rhpamuser
+spec:
+  roles:
+    - name: group1
+    - name: group2
+    - name: group3
+  users:
+    - username: user1
+      password: password
+      roles:
+        - group1
+        - group2
+        - kie-server
+        - user
+    - username: user2
+      password: password
+      roles:
+        - group2
+        - group3
+        - kie-server
+        - user

@@ -49,3 +49,32 @@ type KeycloakApiClient struct {
 	UseTemplateMappers        bool                     `json:"useTemplateMappers"`
 	Access                    map[string]bool          `json:"access"`
 }
+
+type KeycloakUser struct {
+	*KeycloakApiUser
+	OutputSecret *string `json:"outputSecret,omitempty"`
+	Password     *string `json:"password,omitempty"`
+}
+
+type KeycloakApiUser struct {
+	ID              string              `json:"id,omitempty"`
+	UserName        string              `json:"username,omitempty"`
+	FirstName       string              `json:"firstName"`
+	LastName        string              `json:"lastName"`
+	Email           string              `json:"email,omitempty"`
+	EmailVerified   bool                `json:"emailVerified"`
+	Enabled         bool                `json:"enabled"`
+	RealmRoles      []string            `json:"realmRoles,omitempty"`
+	ClientRoles     map[string][]string `json:"clientRoles"`
+	RequiredActions []string            `json:"requiredActions,omitempty"`
+	Groups          []string            `json:"groups,omitempty"`
+}
+
+type KeycloakRole struct {
+	ID                 string `json:"id,omitempty"`
+	Name               string `json:"name,omitempty"`
+	ScopeParamRequired bool   `json:"scopeParamRequired,omitempty"`
+	Composite          bool   `json:"composite,omitempty"`
+	ClientRole         bool   `json:"clientRole,omitempty"`
+	ContainerID        string `json:"containerId,omitempty"`
+}

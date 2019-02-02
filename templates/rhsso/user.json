@@ -1,0 +1,23 @@
+{
+    "access": {
+      "impersonate": true,
+      "manage": true,
+      "manageGroupMembership": true,
+      "mapRoles": true,
+      "view": true
+    },
+    "credentials" : [ {
+      "type" : "password",
+      "value": "{{ .Password }}",
+      "temporary": false
+    } ],
+    "disableableCredentialTypes": [
+      "password"
+    ],
+    "emailVerified": false,
+    "enabled": true,
+    "notBefore": 0,
+    "requiredActions": [],
+    "totp": false,
+    "username": "{{ .Username }}"
+  }

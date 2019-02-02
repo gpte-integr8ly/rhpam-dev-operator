@@ -13,5 +13,6 @@ var (
 	PhaseBusinessCentralInstalled StatusPhase = "business central installed"
 	PhaseDatabaseReady            StatusPhase = "database ready"
 	PhaseKieServerInstalled       StatusPhase = "kie server installed"
+	PhaseReconcile                StatusPhase = "reconcile"
 	PhaseComplete                 StatusPhase = "complete"
 )

@@ -1,0 +1,6 @@
+{
+    "name": "{{ .RoleName }}",
+    "scopeParamRequired": false,
+    "composite": false,
+    "clientRole": false
+  }

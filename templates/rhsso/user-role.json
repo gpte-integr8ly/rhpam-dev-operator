@@ -1,0 +1,4 @@
+[{
+    "name": "{{ .RoleName }}",
+    "id": "{{ .RoleId }}"
+  }]
