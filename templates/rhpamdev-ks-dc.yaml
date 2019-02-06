@@ -36,7 +36,11 @@ spec:
         image: {{ .KieServerImage }}
         imagePullPolicy: Always
         resources:
+          requests:
+            cpu: "{{ .KieServerCpuRequest }}"
+            memory: "{{ .KieServerMemoryRequest }}"
           limits:
+            cpu: "{{ .KieServerCpuLimit }}"
             memory: "{{ .KieServerMemoryLimit }}"
         livenessProbe:
           exec:
@@ -69,10 +73,8 @@ spec:
           containerPort: 8443
           protocol: TCP
         env:
-        - name: JAVA_MAX_MEM_RATIO
-          value: "{{ .KieServerJavaMaxMemRatio }}"
-        - name: JAVA_INITIAL_MEM_RATIO
-          value: "{{ .KieServerJavaInitialMemRatio }}"            
+        - name: GC_MAX_METASPACE_SIZE
+          value: "{{ .KieServerGcMaxMetaSize }}"
         - name: DATASOURCES
           value: "RHPAM"
         - name: RHPAM_DRIVER
@@ -103,7 +105,7 @@ spec:
         - name: DROOLS_SERVER_FILTER_CLASSES
           value: "{{ .KieServerDroolsFilterClasses }}"
         - name: KIE_MBEANS
-          value: "{{ .KieMbeans }}"
+          value: "{{ .KieServerKieMBeans }}"
         - name: KIE_SERVER_BYPASS_AUTH_USER
           value: "{{ .KieServerBypassAuthUser }}"
         - name: KIE_SERVER_CONTROLLER_SERVICE

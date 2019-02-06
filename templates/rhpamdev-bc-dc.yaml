@@ -36,7 +36,11 @@ spec:
         image: "{{ .BusinessCentralImage }}"
         imagePullPolicy: Always
         resources:
+          requests:
+            cpu: "{{ .BusinessCentralCpuRequest }}"
+            memory: "{{ .BusinessCentralMemoryRequest }}"
           limits:
+            cpu: "{{ .BusinessCentralCpuLimit }}"
             memory: "{{ .BusinessCentralMemoryLimit }}"
         volumeMounts:
         - name: "{{ .BusinessCentralPvc }}"
@@ -74,14 +78,10 @@ spec:
           containerPort: 8001
           protocol: TCP
         env:
-        - name: JAVA_MAX_MEM_RATIO
-          value: "{{ .BusinessCentralJavaMaxMemRatio }}"
-        - name: JAVA_INITIAL_MEM_RATIO
-          value: "{{ .BusinessCentralJavaInitialMemRatio }}"
         - name: GC_MAX_METASPACE_SIZE
           value: "{{ .BusinessCentralGcMaxMetaSize }}"            
         - name: KIE_MBEANS
-          value: "{{ .KieMbeans }}"
+          value: "{{ .BusinessCentralKieMBeans }}"
         - name: JAVA_OPTS_APPEND
           value: "{{ .BusinessCentralJavaOptsAppend }}"
       volumes:
