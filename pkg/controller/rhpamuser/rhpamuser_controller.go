@@ -97,13 +97,13 @@ func (r *ReconcileRhpamUser) Reconcile(request reconcile.Request) (reconcile.Res
 	switch rhpamCopy.Status.Phase {
 	case rhpamv1alpha1.NoPhase:
 		rhpamState, err := r.phaseHandler.Initialize(rhpamCopy)
-		return r.handleResult(rhpamState, err)
+		return r.handleResult(rhpamState, err, true)
 	case rhpamv1alpha1.PhaseAccepted:
 		rhpamState, err := r.phaseHandler.Accepted(rhpamCopy)
-		return r.handleResult(rhpamState, err)
+		return r.handleResult(rhpamState, err, true)
 	case rhpamv1alpha1.PhaseReconcile:
 		rhpamState, err := r.phaseHandler.Reconcile(rhpamCopy)
-		return r.handleResult(rhpamState, err)
+		return r.handleResult(rhpamState, err, false)
 	case rhpamv1alpha1.PhaseComplete:
 		reqLogger.Info("RHPAM user installation complete")
 	}
@@ -111,9 +111,9 @@ func (r *ReconcileRhpamUser) Reconcile(request reconcile.Request) (reconcile.Res
 	return reconcile.Result{}, nil
 }
 
-func (r *ReconcileRhpamUser) handleResult(rhpam *rhpamv1alpha1.RhpamUser, err error) (reconcile.Result, error) {
+func (r *ReconcileRhpamUser) handleResult(rhpam *rhpamv1alpha1.RhpamUser, err error, requeue bool) (reconcile.Result, error) {
 	if err != nil {
 		return reconcile.Result{}, err
 	}
-	return reconcile.Result{Requeue: true}, r.client.Update(context.TODO(), rhpam)
+	return reconcile.Result{Requeue: requeue}, r.client.Update(context.TODO(), rhpam)
 }

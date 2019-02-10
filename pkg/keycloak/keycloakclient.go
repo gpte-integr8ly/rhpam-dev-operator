@@ -101,7 +101,7 @@ func (c *Client) CreateUser(json []byte, realm string) error {
 	return c.create(json, fmt.Sprintf("realms/%s/users", realm), "user", 201)
 }
 
-func (c *Client) CreateUserRole(json []byte, user, realm string) error {
+func (c *Client) CreateUserRealmRole(json []byte, user, realm string) error {
 	return c.create(json, fmt.Sprintf("realms/%s/users/%s/role-mappings/realm", realm, user), "user-role", 204)
 }
 
@@ -204,7 +204,7 @@ func (c *Client) GetRole(roleName, realmName string) (*KeycloakRole, error) {
 	return result.(*KeycloakRole), nil
 }
 
-func (c *Client) GetRoleMappings(user, realm string) ([]*KeycloakRole, error) {
+func (c *Client) GetRealmRoleMappings(user, realm string) ([]*KeycloakRole, error) {
 	result, err := c.get(fmt.Sprintf("realms/%s/users/%s/role-mappings/realm", realm, user), "role-mapping", func(body []byte) (T, error) {
 		var roleMappings []*KeycloakRole
 		err := json.Unmarshal(body, &roleMappings)
@@ -220,6 +220,73 @@ func (c *Client) GetRoleMappings(user, realm string) ([]*KeycloakRole, error) {
 	}
 
 	return res, nil
+}
+
+// Generic delete function for deleting Keycloak resources
+func (c *Client) delete(resourcePath, resourceName string) error {
+	req, err := http.NewRequest(
+		"DELETE",
+		fmt.Sprintf("%s/auth/admin/%s", c.URL, resourcePath),
+		nil,
+	)
+	if err != nil {
+		log.Error(err, "error creating DELETE request", "resource", resourceName)
+		return errors.Wrapf(err, "error creating DELETE %s request", resourceName)
+	}
+
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
+	res, err := c.requester.Do(req)
+	if err != nil {
+		log.Error(err, "error on request")
+		return errors.Wrapf(err, "error performing DELETE %s request", resourceName)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != 204 {
+		return fmt.Errorf("failed to DELETE %s: (%d) %s", resourceName, res.StatusCode, res.Status)
+	}
+
+	return nil
+}
+
+func (c *Client) DeleteUser(userID, realm string) error {
+	return c.delete(fmt.Sprintf("realms/%s/users/%s", realm, userID), "user")
+}
+
+func (c *Client) DeleteRole(role, realm string) error {
+	return c.delete(fmt.Sprintf("realms/%s/roles/%s", realm, role), "role")
+}
+
+// Generic create function for creating new Keycloak resources
+func (c *Client) deleteWithBody(obj []byte, resourcePath, resourceName string) error {
+	req, err := http.NewRequest(
+		"DELETE",
+		fmt.Sprintf("%s/auth/admin/%s", c.URL, resourcePath),
+		bytes.NewBuffer(obj),
+	)
+	if err != nil {
+		log.Error(err, "error creating DELETE request", "resource", resourceName)
+		return errors.Wrapf(err, "error creating DELETE %s request", resourceName)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", c.token))
+	res, err := c.requester.Do(req)
+
+	if err != nil {
+		log.Error(err, "error on request.")
+		return errors.Wrapf(err, "error performing DELETE %s request", resourceName)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != 204 {
+		return fmt.Errorf("failed to delete %s: (%d) %s", resourceName, res.StatusCode, res.Status)
+	}
+
+	return nil
+}
+
+func (c *Client) DeleteUserRealmRole(json []byte, user, realm string) error {
+	return c.deleteWithBody(json, fmt.Sprintf("realms/%s/users/%s/role-mappings/realm", realm, user), "user-role")
 }
 
 // Generic list function for listing Keycloak resources
@@ -255,12 +322,13 @@ func (c *Client) list(resourcePath, resourceName string, unMarshalListFunc func(
 	objs, err := unMarshalListFunc(body)
 	if err != nil {
 		log.Error(err, "Error unmarshalling response")
+		return nil, err
 	}
 	return objs, nil
 }
 
-func (c *Client) ListClients(realmName string) ([]*KeycloakClient, error) {
-	result, err := c.list(fmt.Sprintf("realms/%s/clients", realmName), "clients", func(body []byte) (T, error) {
+func (c *Client) ListClients(realm string) ([]*KeycloakClient, error) {
+	result, err := c.list(fmt.Sprintf("realms/%s/clients", realm), "clients", func(body []byte) (T, error) {
 		var clients []*KeycloakClient
 		err := json.Unmarshal(body, &clients)
 		return clients, err
@@ -278,6 +346,34 @@ func (c *Client) ListClients(realmName string) ([]*KeycloakClient, error) {
 
 	return res, nil
 
+}
+
+func (c *Client) ListUsers(realm string) ([]*KeycloakUser, error) {
+	result, err := c.list(fmt.Sprintf("realms/%s/users", realm), "users", func(body []byte) (T, error) {
+		var users []*KeycloakUser
+		err := json.Unmarshal(body, &users)
+		return users, err
+	})
+	if err != nil {
+		return nil, err
+	}
+	return result.([]*KeycloakUser), err
+}
+
+func (c *Client) ListRoles(realm string) ([]*KeycloakRole, error) {
+	result, err := c.list(fmt.Sprintf("realms/%s/roles", realm), "roles", func(body []byte) (T, error) {
+		var roles []*KeycloakRole
+		err := json.Unmarshal(body, &roles)
+		return roles, err
+	})
+	if err != nil {
+		return nil, err
+	}
+	res, ok := result.([]*KeycloakRole)
+	if !ok {
+		return nil, errors.New("error decoding list roles response")
+	}
+	return res, nil
 }
 
 // login requests a new auth token from Keycloak
@@ -340,17 +436,22 @@ type KeycloakInterface interface {
 
 	CreateRole(json []byte, realm string) error
 
-	CreateClient(json []byte, realmName string) error
-	GetClientSecret(clientId, realmName string) (string, error)
-	ListClients(realmName string) ([]*KeycloakClient, error)
+	CreateClient(json []byte, realm string) error
+	GetClientSecret(clientId, realm string) (string, error)
+	ListClients(realm string) ([]*KeycloakClient, error)
 
-	CreateUser(json []byte, realmName string) error
+	CreateUser(json []byte, realm string) error
 	FindUserByUsername(name, realm string) (*KeycloakApiUser, error)
-	GetUser(userID, realmName string) (*KeycloakUser, error)
+	GetUser(userID, realm string) (*KeycloakUser, error)
+	ListUsers(realm string) ([]*KeycloakUser, error)
+	DeleteUser(userID, realm string) error
 
-	GetRole(roleName string, realmName string) (*KeycloakRole, error)
-	GetRoleMappings(user string, realm string) ([]*KeycloakRole, error)
-	CreateUserRole(json []byte, userId, realm string) error
+	GetRole(roleName string, realm string) (*KeycloakRole, error)
+	ListRoles(realmName string) ([]*KeycloakRole, error)
+	DeleteRole(roleName string, realm string) error
+	GetRealmRoleMappings(user string, realm string) ([]*KeycloakRole, error)
+	CreateUserRealmRole(json []byte, userId, realm string) error
+	DeleteUserRealmRole(json []byte, userId, realm string) error
 }
 
 type KeycloakClientFactory interface {

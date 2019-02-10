@@ -78,3 +78,13 @@ type KeycloakRole struct {
 	ClientRole         bool   `json:"clientRole,omitempty"`
 	ContainerID        string `json:"containerId,omitempty"`
 }
+
+type KeycloakUserPair struct {
+	KcUser   *KeycloakUser
+	SpecUser *KeycloakUser
+}
+
+type KeycloakRolePair struct {
+	KcRole   string
+	SpecRole string
+}

@@ -25,6 +25,7 @@ type RhpamUserSpec struct {
 // RhpamUserStatus defines the observed state of RhpamUser
 type RhpamUserStatus struct {
 	Phase StatusPhase `json:"phase"`
+	Realm string      `json:"realm"`
 }
 
 // RhpamUser is the Schema for the rhpamusers API

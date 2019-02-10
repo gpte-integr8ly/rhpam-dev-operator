@@ -56,9 +56,6 @@ func (ph *phaseHandler) Accepted(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1al
 			// set to phase reconcilereconcile
 		}
 		if rhpamdev.Status.Phase == rhpamv1alpha1.PhaseRealmProvisioned {
-			// create default users
-			// update rhpamdev
-			// set to phase reconcile
 			ssoClient, err := ph.authenticatedClient()
 			if err != nil {
 				return nil, err
@@ -75,30 +72,14 @@ func (ph *phaseHandler) Accepted(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1al
 					return nil, err
 				}
 				for _, role := range user.Roles {
-					if err := ph.createUserRole(ssoClient, rhpamdev.Status.Realm, user.Username, role); err != nil {
-						return nil, err
-					}
-				}
-			}
-			// create roles
-			for _, role := range rhpamuser.Spec.Roles {
-				if err := ph.createRole(ssoClient, rhpamdev.Status.Realm, role.Name); err != nil {
-					return nil, err
-				}
-			}
-			// create users
-			for _, user := range rhpamuser.Spec.Users {
-				if err := ph.createUser(ssoClient, rhpamdev.Status.Realm, user.Username, user.Password); err != nil {
-					return nil, err
-				}
-				for _, role := range user.Roles {
-					if err := ph.createUserRole(ssoClient, rhpamdev.Status.Realm, user.Username, role); err != nil {
+					if err := ph.createUserRealmRole(ssoClient, rhpamdev.Status.Realm, user.Username, role); err != nil {
 						return nil, err
 					}
 				}
 			}
 			//set to phase Reconcile
 			rhpamuser.Status.Phase = rhpamv1alpha1.PhaseReconcile
+			rhpamuser.Status.Realm = rhpamdev.Status.Realm
 		}
 	}
 
@@ -106,8 +87,125 @@ func (ph *phaseHandler) Accepted(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1al
 }
 
 func (ph *phaseHandler) Reconcile(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1alpha1.RhpamUser, error) {
+	ssoClient, err := ph.authenticatedClient()
+	if err != nil {
+		return nil, err
+	}
+	if err := ph.reconcileRoles(ssoClient, rhpamuser); err != nil {
+		return nil, err
+	}
+	if err := ph.reconcileUsers(ssoClient, rhpamuser); err != nil {
+		return nil, err
+	}
 
 	return rhpamuser, nil
+}
+
+func (ph *phaseHandler) reconcileRoles(ssoClient keycloak.KeycloakInterface, rhpamuser *rhpamv1alpha1.RhpamUser) error {
+	roles, err := ssoClient.ListRoles(rhpamuser.Status.Realm)
+	if err != nil {
+		return err
+	}
+	rolesPairList := map[string]*keycloak.KeycloakRolePair{}
+	for _, role := range roles {
+		rolesPairList[role.Name] = &keycloak.KeycloakRolePair{KcRole: role.Name, SpecRole: ""}
+	}
+	for _, role := range rhpamuser.Spec.Roles {
+		if _, ok := rolesPairList[role.Name]; ok {
+			rolesPairList[role.Name].SpecRole = role.Name
+		} else {
+			rolesPairList[role.Name] = &keycloak.KeycloakRolePair{KcRole: "", SpecRole: role.Name}
+		}
+	}
+	for _, rolePair := range rolesPairList {
+		if err := ph.reconcileRole(ssoClient, rhpamuser.Status.Realm, rolePair.KcRole, rolePair.SpecRole); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ph *phaseHandler) reconcileUsers(ssoClient keycloak.KeycloakInterface, rhpamuser *rhpamv1alpha1.RhpamUser) error {
+	users, err := ssoClient.ListUsers(rhpamuser.Status.Realm)
+	if err != nil {
+		return err
+	}
+	userPairList := map[string]*keycloak.KeycloakUserPair{}
+	for _, user := range users {
+		roleMappings, err := ssoClient.GetRealmRoleMappings(user.ID, rhpamuser.Status.Realm)
+		if err != nil {
+			return err
+		}
+		for _, role := range roleMappings {
+			user.RealmRoles = append(user.RealmRoles, role.Name)
+		}
+		userPairList[user.UserName] = &keycloak.KeycloakUserPair{KcUser: user, SpecUser: nil}
+	}
+	for _, user := range rhpamuser.Spec.Users {
+		keycloakUser := &keycloak.KeycloakUser{KeycloakApiUser: &keycloak.KeycloakApiUser{UserName: user.Username, RealmRoles: user.Roles}, Password: &user.Password}
+		if _, ok := userPairList[user.Username]; ok {
+			userPairList[user.Username].SpecUser = keycloakUser
+		} else {
+			userPairList[user.Username] = &keycloak.KeycloakUserPair{KcUser: nil, SpecUser: keycloakUser}
+		}
+	}
+	for _, userPair := range userPairList {
+		if err := ph.reconcileUser(ssoClient, rhpamuser.Status.Realm, userPair.KcUser, userPair.SpecUser); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (ph *phaseHandler) reconcileRole(ssoClient keycloak.KeycloakInterface, realm, kcRole, specRole string) error {
+	if specRole == "" && !isDefaultRole(kcRole) {
+		return ssoClient.DeleteRole(kcRole, realm)
+	}
+	if kcRole == "" {
+		return ph.createRole(ssoClient, realm, specRole)
+	}
+	return nil
+}
+
+func (ph *phaseHandler) reconcileUser(ssoClient keycloak.KeycloakInterface, realm string, kcUser, specUser *keycloak.KeycloakUser) error {
+	if specUser == nil {
+		if !isDefaultUser(kcUser.UserName) {
+			ph.deleteUser(ssoClient, realm, kcUser.UserName)
+		}
+	} else if kcUser == nil {
+		user := &rhpamv1alpha1.User{Username: specUser.UserName, Password: *specUser.Password, Roles: specUser.RealmRoles}
+		return ph.createUserWithRealmRoles(ssoClient, realm, user)
+	} else {
+		// reconcile roles
+		rolePairList := map[string]*keycloak.KeycloakRolePair{}
+		for _, kcUserRole := range kcUser.RealmRoles {
+			rolePairList[kcUserRole] = &keycloak.KeycloakRolePair{KcRole: kcUserRole, SpecRole: ""}
+		}
+		for _, specUserRole := range specUser.RealmRoles {
+			if _, ok := rolePairList[specUserRole]; ok {
+				rolePairList[specUserRole].SpecRole = specUserRole
+			} else {
+				rolePairList[specUserRole] = &keycloak.KeycloakRolePair{KcRole: "", SpecRole: specUserRole}
+			}
+		}
+		for _, rolePair := range rolePairList {
+			if err := ph.reconcileUserRealmRole(ssoClient, realm, kcUser.UserName, rolePair.KcRole, rolePair.SpecRole); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
+
+}
+
+func (ph *phaseHandler) reconcileUserRealmRole(ssoClient keycloak.KeycloakInterface, realm, user, kcRole, specRole string) error {
+	if kcRole == "" {
+		return ph.createUserRealmRole(ssoClient, realm, user, specRole)
+	} else if specRole == "" {
+		return ph.deleteUserRealmRole(ssoClient, realm, user, kcRole)
+	}
+	return nil
 }
 
 func (ph *phaseHandler) authenticatedClient() (keycloak.KeycloakInterface, error) {
@@ -141,6 +239,18 @@ func (ph *phaseHandler) createRole(ssoClient keycloak.KeycloakInterface, realm, 
 	return nil
 }
 
+func (ph *phaseHandler) createUserWithRealmRoles(ssoClient keycloak.KeycloakInterface, realm string, user *rhpamv1alpha1.User) error {
+	if err := ph.createUser(ssoClient, realm, user.Username, user.Password); err != nil {
+		return err
+	}
+	for _, role := range user.Roles {
+		if err := ph.createUserRealmRole(ssoClient, realm, user.Username, role); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (ph *phaseHandler) createUser(ssoClient keycloak.KeycloakInterface, realm, username, password string) error {
 	_, err := ssoClient.FindUserByUsername(username, realm)
 	if err == nil {
@@ -152,7 +262,6 @@ func (ph *phaseHandler) createUser(ssoClient keycloak.KeycloakInterface, realm, 
 	if err != nil {
 		return err
 	}
-	log.Info("Creating User")
 	if err := ssoClient.CreateUser(json, realm); err != nil {
 		return errors.Wrap(err, "Error creating user in rhsso")
 	}
@@ -160,12 +269,24 @@ func (ph *phaseHandler) createUser(ssoClient keycloak.KeycloakInterface, realm, 
 	return nil
 }
 
-func (ph *phaseHandler) createUserRole(ssoClient keycloak.KeycloakInterface, realm, username, rolename string) error {
+func (ph *phaseHandler) deleteUser(ssoClient keycloak.KeycloakInterface, realm, username string) error {
+	user, err := ssoClient.FindUserByUsername(username, realm)
+	if err != nil {
+		return nil
+	}
+	if err := ssoClient.DeleteUser(user.ID, realm); err != nil {
+		return errors.Wrap(err, "Error deleting user in rhsso")
+	}
+
+	return nil
+}
+
+func (ph *phaseHandler) createUserRealmRole(ssoClient keycloak.KeycloakInterface, realm, username, rolename string) error {
 	user, err := ssoClient.FindUserByUsername(username, realm)
 	if err != nil {
 		return err
 	}
-	roleMappings, err := ssoClient.GetRoleMappings(user.ID, realm)
+	roleMappings, err := ssoClient.GetRealmRoleMappings(user.ID, realm)
 	if err != nil {
 		return err
 	}
@@ -182,7 +303,37 @@ func (ph *phaseHandler) createUserRole(ssoClient keycloak.KeycloakInterface, rea
 		userRoleParams := keycloak.UserRoleParameters{RoleName: rolename, RoleId: role.ID}
 		userRoleHelper := keycloak.NewUserRoleHelper()
 		json, err := userRoleHelper.LoadUserRoleTemplate(userRoleParams)
-		if err := ssoClient.CreateUserRole(json, user.ID, realm); err != nil {
+		if err := ssoClient.CreateUserRealmRole(json, user.ID, realm); err != nil {
+			return errors.Wrap(err, "Error creating userrole in rhsso")
+		}
+	}
+
+	return nil
+}
+
+func (ph *phaseHandler) deleteUserRealmRole(ssoClient keycloak.KeycloakInterface, realm, username, rolename string) error {
+	user, err := ssoClient.FindUserByUsername(username, realm)
+	if err != nil {
+		return err
+	}
+	roleMappings, err := ssoClient.GetRealmRoleMappings(user.ID, realm)
+	if err != nil {
+		return err
+	}
+	roleMap := make(map[string]*keycloak.KeycloakRole)
+	for _, role := range roleMappings {
+		roleMap[role.Name] = role
+	}
+	_, ok := roleMap[rolename]
+	if ok {
+		role, err := ssoClient.GetRole(rolename, realm)
+		if err != nil {
+			return err
+		}
+		userRoleParams := keycloak.UserRoleParameters{RoleName: rolename, RoleId: role.ID}
+		userRoleHelper := keycloak.NewUserRoleHelper()
+		json, err := userRoleHelper.LoadUserRoleTemplate(userRoleParams)
+		if err := ssoClient.DeleteUserRealmRole(json, user.ID, realm); err != nil {
 			return errors.Wrap(err, "Error creating userrole in rhsso")
 		}
 	}
@@ -203,4 +354,22 @@ func (ph *phaseHandler) readSSOSecret() error {
 	ph.keycloakFactory.AdminUrl = string(secret.Data["SSO_ADMIN_URL"])
 
 	return nil
+}
+
+func isDefaultRole(role string) bool {
+	for _, r := range defaultRoles {
+		if role == r {
+			return true
+		}
+	}
+	return false
+}
+
+func isDefaultUser(username string) bool {
+	for _, u := range defaultUsers {
+		if username == u.Username {
+			return true
+		}
+	}
+	return false
 }
