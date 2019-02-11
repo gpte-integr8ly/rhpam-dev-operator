@@ -2,7 +2,7 @@ package rhpamdev
 
 import (
 	yaml "github.com/ghodss/yaml"
-	gptev1alpha1 "github.com/gpte-naps/rhpam-dev-operator/pkg/apis/gpte/v1alpha1"
+	rhpamv1alpha1 "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/apis/rhpam/v1alpha1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 )
@@ -41,11 +41,11 @@ var (
 )
 
 type ResourceHelper struct {
-	cr             *gptev1alpha1.RhpamDev
+	cr             *rhpamv1alpha1.RhpamDev
 	templateHelper *TemplateHelper
 }
 
-func newResourceHelper(cr *gptev1alpha1.RhpamDev) *ResourceHelper {
+func newResourceHelper(cr *rhpamv1alpha1.RhpamDev) *ResourceHelper {
 	return &ResourceHelper{
 		cr:             cr,
 		templateHelper: newTemplateHelper(cr),

@@ -3,7 +3,7 @@ package rhpamdev
 import (
 	"context"
 
-	gptev1alpha1 "github.com/gpte-naps/rhpam-dev-operator/pkg/apis/gpte/v1alpha1"
+	rhpamv1alpha1 "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/apis/rhpam/v1alpha1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -102,7 +102,7 @@ func add(mgr manager.Manager, r reconcile.Reconciler) error {
 	}
 
 	// Watch for changes to primary resource RhpamDev
-	err = c.Watch(&source.Kind{Type: &gptev1alpha1.RhpamDev{}}, &handler.EnqueueRequestForObject{})
+	err = c.Watch(&source.Kind{Type: &rhpamv1alpha1.RhpamDev{}}, &handler.EnqueueRequestForObject{})
 	if err != nil {
 		return err
 	}
@@ -131,7 +131,7 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 	reqLogger.Info("Reconciling RhpamDev")
 
 	// Fetch the RhpamDev instance
-	rhpam := &gptev1alpha1.RhpamDev{}
+	rhpam := &rhpamv1alpha1.RhpamDev{}
 	err := r.client.Get(context.TODO(), request.NamespacedName, rhpam)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -147,28 +147,28 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 
 	rhpamCopy := rhpam.DeepCopy()
 	switch rhpamCopy.Status.Phase {
-	case gptev1alpha1.NoPhase:
+	case rhpamv1alpha1.NoPhase:
 		rhpamState, err := r.phaseHandler.Initialize(rhpamCopy)
 		return r.handleResult(rhpamState, err)
-	case gptev1alpha1.PhaseInitialized:
+	case rhpamv1alpha1.PhaseInitialized:
 		rhpamState, err := r.phaseHandler.Prepare(rhpamCopy)
 		return r.handleResult(rhpamState, err)
-	case gptev1alpha1.PhasePrepared:
+	case rhpamv1alpha1.PhasePrepared:
 		rhpamState, err := r.phaseHandler.InstallDatabase(rhpamCopy)
 		return r.handleResult(rhpamState, err)
-	case gptev1alpha1.PhaseDatabaseInstalled:
+	case rhpamv1alpha1.PhaseDatabaseInstalled:
 		rhpamState, err := r.phaseHandler.installBusinessCentral(rhpamCopy)
 		return r.handleResult(rhpamState, err)
-	case gptev1alpha1.PhaseBusinessCentralInstalled:
+	case rhpamv1alpha1.PhaseBusinessCentralInstalled:
 		ready, rhpamState, err := r.phaseHandler.WaitForDatabase(rhpamCopy)
 		if !ready && err == nil {
 			return reconcile.Result{Requeue: true}, nil
 		}
 		return r.handleResult(rhpamState, err)
-	case gptev1alpha1.PhaseDatabaseReady:
+	case rhpamv1alpha1.PhaseDatabaseReady:
 		rhpamState, err := r.phaseHandler.installKieServer(rhpamCopy)
 		return r.handleResult(rhpamState, err)
-	case gptev1alpha1.PhaseComplete:
+	case rhpamv1alpha1.PhaseComplete:
 		reqLogger.Info("RHSSO installation complete")
 	}
 
@@ -176,7 +176,7 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 
 }
 
-func (r *ReconcileRhpamDev) handleResult(rhpam *gptev1alpha1.RhpamDev, err error) (reconcile.Result, error) {
+func (r *ReconcileRhpamDev) handleResult(rhpam *rhpamv1alpha1.RhpamDev, err error) (reconcile.Result, error) {
 	if err != nil {
 		return reconcile.Result{}, err
 	}

@@ -1,7 +1,7 @@
 package apis
 
 import (
-	"github.com/gpte-naps/rhpam-dev-operator/pkg/apis/gpte/v1alpha1"
+	"github.com/gpte-integr8ly/rhpam-dev-operator/pkg/apis/rhpam/v1alpha1"
 )
 
 func init() {

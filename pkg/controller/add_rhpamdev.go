@@ -1,7 +1,7 @@
 package controller
 
 import (
-	"github.com/gpte-naps/rhpam-dev-operator/pkg/controller/rhpamdev"
+	"github.com/gpte-integr8ly/rhpam-dev-operator/pkg/controller/rhpamdev"
 )
 
 func init() {

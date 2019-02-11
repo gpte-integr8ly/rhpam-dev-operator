@@ -7,7 +7,7 @@ import (
 	"os"
 	"text/template"
 
-	gptev1alpha1 "github.com/gpte-naps/rhpam-dev-operator/pkg/apis/gpte/v1alpha1"
+	rhpamv1alpha1 "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/apis/rhpam/v1alpha1"
 )
 
 type TemplateHelper struct {
@@ -51,6 +51,9 @@ type RhpamdevParameters struct {
 	KieServerImageStreamNamespace       string
 	KieServerImage                      string
 	KieServerImageTag                   string
+	KieServerCpuRequest                 string
+	KieServerCpuLimit                   string
+	KieServerMemoryRequest              string
 	KieServerMemoryLimit                string
 	KieServerGcMaxMetaSize              string
 	KieServerDroolsFilterClasses        string
@@ -62,7 +65,7 @@ type RhpamdevParameters struct {
 	KieServerKieMBeans                  string
 }
 
-func newTemplateHelper(rhpam *gptev1alpha1.RhpamDev) *TemplateHelper {
+func newTemplateHelper(rhpam *rhpamv1alpha1.RhpamDev) *TemplateHelper {
 
 	params := RhpamdevParameters{
 		ServiceAccount:                      ServiceAccount,
@@ -100,6 +103,9 @@ func newTemplateHelper(rhpam *gptev1alpha1.RhpamDev) *TemplateHelper {
 		KieServerImageStreamNamespace:       KieServerImageStreamNamespace,
 		KieServerImage:                      KieServerImage,
 		KieServerImageTag:                   KieServerImageTag,
+		KieServerCpuRequest:                 valueOrDefault(rhpam.Spec.Config.KieServerConfig.CpuRequest, KieServerCpuRequest),
+		KieServerCpuLimit:                   valueOrDefault(rhpam.Spec.Config.KieServerConfig.CpuLimit, KieServerCpuLimit),
+		KieServerMemoryRequest:              valueOrDefault(rhpam.Spec.Config.KieServerConfig.MemoryRequest, KieServerMemoryRequest),
 		KieServerMemoryLimit:                valueOrDefault(rhpam.Spec.Config.KieServerConfig.MemoryLimit, KieServerMemoryLimit),
 		KieServerGcMaxMetaSize:              valueOrDefault(rhpam.Spec.Config.KieServerConfig.GcMaxMetaSize, KieServerGcMaxMetaSize),
 		KieServerDroolsFilterClasses:        valueOrDefault(rhpam.Spec.Config.KieServerConfig.DroolsFilterClasses, KieServerDroolsFilterClasses),

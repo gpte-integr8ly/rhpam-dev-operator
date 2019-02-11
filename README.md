@@ -1,1 +1,1 @@
-### GPTE NAPS - RHPAM Dev Operator
+### GPTE Integreatly - RHPAM Dev Operator

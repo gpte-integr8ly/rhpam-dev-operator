@@ -7,8 +7,8 @@ import (
 	"os"
 	"runtime"
 
-	"github.com/gpte-naps/rhpam-dev-operator/pkg/apis"
-	"github.com/gpte-naps/rhpam-dev-operator/pkg/controller"
+	"github.com/gpte-integr8ly/rhpam-dev-operator/pkg/apis"
+	"github.com/gpte-integr8ly/rhpam-dev-operator/pkg/controller"
 	appsv1 "github.com/openshift/api/apps/v1"
 	routev1 "github.com/openshift/api/route/v1"
 	"github.com/operator-framework/operator-sdk/pkg/k8sutil"

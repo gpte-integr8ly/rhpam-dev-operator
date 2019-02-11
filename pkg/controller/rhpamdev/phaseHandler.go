@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"math/rand"
 
-	gptev1alpha1 "github.com/gpte-naps/rhpam-dev-operator/pkg/apis/gpte/v1alpha1"
+	rhpamv1alpha1 "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/apis/rhpam/v1alpha1"
 	appsv1 "github.com/openshift/api/apps/v1"
 	"k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
@@ -30,7 +30,7 @@ func NewPhaseHandler(c client.Client, s *runtime.Scheme) *phaseHandler {
 	}
 }
 
-func (ph *phaseHandler) Initialize(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.RhpamDev, error) {
+func (ph *phaseHandler) Initialize(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
 	log.Info("Phase Initialize")
 	// fill in any defaults that are not set
 	rhpam.Defaults()
@@ -41,24 +41,24 @@ func (ph *phaseHandler) Initialize(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.
 		return nil, err
 	}
 
-	rhpam.Status.Phase = gptev1alpha1.PhaseInitialized
+	rhpam.Status.Phase = rhpamv1alpha1.PhaseInitialized
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
 }
 
-func (ph *phaseHandler) Prepare(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.RhpamDev, error) {
+func (ph *phaseHandler) Prepare(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
 	log.Info("Phase Prepare")
 
 	if err := ph.createResources(rhpam, []Resource{ServiceAccountResource}); err != nil {
 		return nil, err
 	}
 
-	rhpam.Status.Phase = gptev1alpha1.PhasePrepared
+	rhpam.Status.Phase = rhpamv1alpha1.PhasePrepared
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
 }
 
-func (ph *phaseHandler) InstallDatabase(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.RhpamDev, error) {
+func (ph *phaseHandler) InstallDatabase(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
 	log.Info("Phase InstallDatabase")
 
 	//pg credentials secret
@@ -88,12 +88,12 @@ func (ph *phaseHandler) InstallDatabase(rhpam *gptev1alpha1.RhpamDev) (*gptev1al
 		return nil, err
 	}
 
-	rhpam.Status.Phase = gptev1alpha1.PhaseDatabaseInstalled
+	rhpam.Status.Phase = rhpamv1alpha1.PhaseDatabaseInstalled
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
 }
 
-func (ph *phaseHandler) installBusinessCentral(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.RhpamDev, error) {
+func (ph *phaseHandler) installBusinessCentral(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
 	log.Info("Phase InstallBusinessCentral")
 
 	if err := ph.createResources(rhpam, []Resource{BusinessCentralPvcResource, BusinessCentralServiceResource,
@@ -101,12 +101,12 @@ func (ph *phaseHandler) installBusinessCentral(rhpam *gptev1alpha1.RhpamDev) (*g
 		return nil, err
 	}
 
-	rhpam.Status.Phase = gptev1alpha1.PhaseBusinessCentralInstalled
+	rhpam.Status.Phase = rhpamv1alpha1.PhaseBusinessCentralInstalled
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
 }
 
-func (ph *phaseHandler) WaitForDatabase(rhpam *gptev1alpha1.RhpamDev) (bool, *gptev1alpha1.RhpamDev, error) {
+func (ph *phaseHandler) WaitForDatabase(rhpam *rhpamv1alpha1.RhpamDev) (bool, *rhpamv1alpha1.RhpamDev, error) {
 
 	ready, err := ph.isDatabaseReady(rhpam)
 	if err != nil {
@@ -114,26 +114,26 @@ func (ph *phaseHandler) WaitForDatabase(rhpam *gptev1alpha1.RhpamDev) (bool, *gp
 	}
 
 	if ready {
-		rhpam.Status.Phase = gptev1alpha1.PhaseDatabaseReady
+		rhpam.Status.Phase = rhpamv1alpha1.PhaseDatabaseReady
 		rhpam.Status.Version = RhpamVersion
 	}
 
 	return ready, rhpam, nil
 }
 
-func (ph *phaseHandler) installKieServer(rhpam *gptev1alpha1.RhpamDev) (*gptev1alpha1.RhpamDev, error) {
+func (ph *phaseHandler) installKieServer(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
 	log.Info("Phase InstallKieServer")
 
 	if err := ph.createResources(rhpam, []Resource{KieServerServiceResource, KieServerRouteResource, KieServerDeploymentResource}); err != nil {
 		return nil, err
 	}
 
-	rhpam.Status.Phase = gptev1alpha1.PhaseComplete
+	rhpam.Status.Phase = rhpamv1alpha1.PhaseComplete
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
 }
 
-func (ph *phaseHandler) createResources(cr *gptev1alpha1.RhpamDev, resources []Resource) error {
+func (ph *phaseHandler) createResources(cr *rhpamv1alpha1.RhpamDev, resources []Resource) error {
 	for _, resource := range resources {
 		err := ph.createResource(cr, resource)
 		if err != nil {
@@ -144,7 +144,7 @@ func (ph *phaseHandler) createResources(cr *gptev1alpha1.RhpamDev, resources []R
 	return nil
 }
 
-func (ph *phaseHandler) createResource(cr *gptev1alpha1.RhpamDev, res Resource) error {
+func (ph *phaseHandler) createResource(cr *rhpamv1alpha1.RhpamDev, res Resource) error {
 	resourceHelper := newResourceHelper(cr)
 	resource, err := resourceHelper.createResource(res)
 
@@ -183,7 +183,7 @@ func (ph *phaseHandler) createResource(cr *gptev1alpha1.RhpamDev, res Resource) 
 	return nil
 }
 
-func (ph *phaseHandler) createSecret(cr *gptev1alpha1.RhpamDev, name string, data map[string][]byte) error {
+func (ph *phaseHandler) createSecret(cr *rhpamv1alpha1.RhpamDev, name string, data map[string][]byte) error {
 
 	secret := &v1.Secret{
 		TypeMeta: metav1.TypeMeta{
@@ -212,7 +212,7 @@ func (ph *phaseHandler) createSecret(cr *gptev1alpha1.RhpamDev, name string, dat
 	return ph.client.Create(context.TODO(), secret)
 }
 
-func (ph *phaseHandler) createConfigmap(cr *gptev1alpha1.RhpamDev, name string, data map[string]string) error {
+func (ph *phaseHandler) createConfigmap(cr *rhpamv1alpha1.RhpamDev, name string, data map[string]string) error {
 
 	configmap := &v1.ConfigMap{
 		TypeMeta: metav1.TypeMeta{
@@ -240,7 +240,7 @@ func (ph *phaseHandler) createConfigmap(cr *gptev1alpha1.RhpamDev, name string, 
 	return ph.client.Create(context.TODO(), configmap)
 }
 
-func (ph *phaseHandler) isDatabaseReady(cr *gptev1alpha1.RhpamDev) (bool, error) {
+func (ph *phaseHandler) isDatabaseReady(cr *rhpamv1alpha1.RhpamDev) (bool, error) {
 	resource := appsv1.DeploymentConfig{}
 
 	selector := types.NamespacedName{

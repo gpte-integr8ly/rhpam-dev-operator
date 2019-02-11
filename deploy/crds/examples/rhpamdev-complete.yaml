@@ -1,4 +1,4 @@
-apiVersion: gpte.integreatly.org/v1alpha1
+apiVersion: rhpam.integreatly.org/v1alpha1
 kind: RhpamDev
 metadata:
   name: example-rhpamdev
