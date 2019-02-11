@@ -53,7 +53,7 @@ func (ph *phaseHandler) Initialize(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha
 		return nil, err
 	}
 
-	rhpam.Status.Phase = rhpamv1alpha1.PhaseInitialized
+	rhpam.Status.Phase = rhpamv1alpha1.PhaseAccepted
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
 }

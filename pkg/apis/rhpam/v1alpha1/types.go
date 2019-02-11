@@ -5,6 +5,7 @@ type StatusPhase string
 var (
 	NoPhase                       StatusPhase
 	PhaseInitialized              StatusPhase = "initialized"
+	PhaseAccepted                 StatusPhase = "accepted"
 	PhaseRealmProvisioned         StatusPhase = "realm provisioned"
 	PhasePrepare                  StatusPhase = "prepare provisioning"
 	PhasePrepared                 StatusPhase = "prepared"

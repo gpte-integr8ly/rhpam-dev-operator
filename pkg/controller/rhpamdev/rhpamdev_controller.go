@@ -166,7 +166,7 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 	case rhpamv1alpha1.NoPhase:
 		rhpamState, err := r.phaseHandler.Initialize(rhpamCopy)
 		return r.handleResult(rhpamState, err)
-	case rhpamv1alpha1.PhaseInitialized:
+	case rhpamv1alpha1.PhaseAccepted:
 		rhpamState, err := r.phaseHandler.ProvisionRealm(rhpamCopy)
 		return r.handleResult(rhpamState, err)
 	case rhpamv1alpha1.PhasePrepare:
