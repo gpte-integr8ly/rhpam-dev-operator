@@ -25,12 +25,6 @@ func NewPhaseHandler(c client.Client) *phaseHandler {
 func (ph *phaseHandler) Initialize(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1alpha1.RhpamUser, error) {
 	log.Info("Phase Initialize")
 
-	//get sso username, password, admin url
-	if err := ph.readSSOSecret(); err != nil {
-		log.Error(err, "Error reading RHSSO secret")
-		return nil, err
-	}
-
 	rhpamuser.Status.Phase = rhpamv1alpha1.PhaseAccepted
 	return rhpamuser, nil
 }
@@ -38,14 +32,11 @@ func (ph *phaseHandler) Initialize(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1
 func (ph *phaseHandler) Accepted(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1alpha1.RhpamUser, error) {
 	log.Info("Phase Accepted")
 
-	// look for a rhpamdev object
+	// look for a rhpamdev object in the current namespace
 	rhpamdevlist := &rhpamv1alpha1.RhpamDevList{}
-	// Try to find the resource, it may already exist
-	opts := &client.ListOptions{}
-	//List(ctx context.Context, opts *ListOptions, list runtime.Object) error
+	opts := &client.ListOptions{Namespace: rhpamuser.ObjectMeta.Namespace}
 	err := ph.client.List(context.TODO(), opts, rhpamdevlist)
 	if err != nil {
-		// Error reading the object
 		log.Error(err, "Error when getting rhpamdev list")
 		return nil, err
 	}
