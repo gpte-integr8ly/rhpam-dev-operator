@@ -53,7 +53,8 @@ func (ph *phaseHandler) Accepted(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1al
 	for _, rhpamdev := range rhpamdevlist.Items {
 		log.Info("Rhpamdev found", "Name", rhpamdev.Name, "Status", rhpamdev.Status.Phase)
 		if rhpamdev.Status.Phase == rhpamv1alpha1.PhaseComplete {
-			// set to phase reconcilereconcile
+			rhpamuser.Status.Phase = rhpamv1alpha1.PhaseReconcile
+			rhpamuser.Status.Realm = rhpamdev.Status.Realm
 		}
 		if rhpamdev.Status.Phase == rhpamv1alpha1.PhaseRealmProvisioned {
 			ssoClient, err := ph.authenticatedClient()
@@ -80,6 +81,10 @@ func (ph *phaseHandler) Accepted(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1al
 			//set to phase Reconcile
 			rhpamuser.Status.Phase = rhpamv1alpha1.PhaseReconcile
 			rhpamuser.Status.Realm = rhpamdev.Status.Realm
+
+			//update status of rhpamdev
+			rhpamdev.Status.Phase = rhpamv1alpha1.PhasePrepare
+			ph.client.Update(context.TODO(), &rhpamdev)
 		}
 	}
 
