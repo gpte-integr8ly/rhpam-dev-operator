@@ -3,6 +3,7 @@ kind: RhpamDev
 metadata:
   name: example-rhpamdev
 spec:
+  domain: apps.mycluster.com
   config:
     database:
       persistentVolumeCapacity: "1Gi"

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	rhpamv1alpha1 "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/apis/rhpam/v1alpha1"
+	k8sutil "github.com/operator-framework/operator-sdk/pkg/k8sutil"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -56,6 +57,7 @@ const (
 	EapAdminUserName                    = "eapadmin"
 	EapAdminPassword                    = "eapadmin1!"
 	BusinessCentralJavaOptsAppend       = "-Dorg.uberfire.nio.git.ssh.algorithm=RSA"
+	BusinessCentralRealmSecret          = "rhpam-bc-sso"
 	KieServerRoute                      = "rhpam-kieserver"
 	KieServerService                    = "rhpam-kieserver"
 	KieServerDeployment                 = "rhpam-kieserver"
@@ -72,6 +74,7 @@ const (
 	KieServerControllerProtocol         = "ws"
 	KieServerId                         = "kieserver-dev"
 	KieServerKieMBeans                  = "enabled"
+	KieServerRealmSecret                = "rhpam-ks-sso"
 )
 
 var log = logf.Log.WithName("controller_rhpamdev")
@@ -130,19 +133,32 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 	reqLogger := log.WithValues("Request.Namespace", request.Namespace, "Request.Name", request.Name)
 	reqLogger.Info("Reconciling RhpamDev")
 
+	//only interested if rhpamdev object is created in same namespace as the operator
+	namespace, err := k8sutil.GetWatchNamespace()
+	if err != nil {
+		reqLogger.Error(err, "failed to get watch namespace")
+		return reconcile.Result{}, nil
+	}
+
+	if namespace != request.Namespace {
+		reqLogger.Info("Request originated from another namespace. Ignoring...")
+		return reconcile.Result{}, nil
+	}
+
 	// Fetch the RhpamDev instance
 	rhpam := &rhpamv1alpha1.RhpamDev{}
-	err := r.client.Get(context.TODO(), request.NamespacedName, rhpam)
-	if err != nil {
-		if errors.IsNotFound(err) {
+	err1 := r.client.Get(context.TODO(), request.NamespacedName, rhpam)
+	if err1 != nil {
+		if errors.IsNotFound(err1) {
 			// Request object not found, could have been deleted after reconcile request.
 			// Owned objects are automatically garbage collected. For additional cleanup logic use finalizers.
 			// Return and don't requeue
+			reqLogger.Info("rhpamdev not found")
 			return reconcile.Result{}, nil
 		}
 		// Error reading the object - requeue the request.
-		reqLogger.Error(err, "Error when getting rhpamdev object")
-		return reconcile.Result{}, err
+		reqLogger.Error(err1, "Error when getting rhpamdev object")
+		return reconcile.Result{}, err1
 	}
 
 	rhpamCopy := rhpam.DeepCopy()
@@ -151,13 +167,13 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 		rhpamState, err := r.phaseHandler.Initialize(rhpamCopy)
 		return r.handleResult(rhpamState, err)
 	case rhpamv1alpha1.PhaseInitialized:
-		rhpamState, err := r.phaseHandler.Prepare(rhpamCopy)
+		rhpamState, err := r.phaseHandler.ProvisionRealm(rhpamCopy)
 		return r.handleResult(rhpamState, err)
 	case rhpamv1alpha1.PhasePrepared:
 		rhpamState, err := r.phaseHandler.InstallDatabase(rhpamCopy)
 		return r.handleResult(rhpamState, err)
 	case rhpamv1alpha1.PhaseDatabaseInstalled:
-		rhpamState, err := r.phaseHandler.installBusinessCentral(rhpamCopy)
+		rhpamState, err := r.phaseHandler.InstallBusinessCentral(rhpamCopy)
 		return r.handleResult(rhpamState, err)
 	case rhpamv1alpha1.PhaseBusinessCentralInstalled:
 		ready, rhpamState, err := r.phaseHandler.WaitForDatabase(rhpamCopy)
@@ -166,10 +182,10 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 		}
 		return r.handleResult(rhpamState, err)
 	case rhpamv1alpha1.PhaseDatabaseReady:
-		rhpamState, err := r.phaseHandler.installKieServer(rhpamCopy)
+		rhpamState, err := r.phaseHandler.InstallKieServer(rhpamCopy)
 		return r.handleResult(rhpamState, err)
 	case rhpamv1alpha1.PhaseComplete:
-		reqLogger.Info("RHSSO installation complete")
+		reqLogger.Info("RHPAM installation complete")
 	}
 
 	return reconcile.Result{}, nil

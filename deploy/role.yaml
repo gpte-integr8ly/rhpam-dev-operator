@@ -14,7 +14,14 @@ rules:
   - configmaps
   - secrets
   - serviceaccounts
-  verbs: ["create", "delete", "deletecollection", "get", "list", "update", "watch"]
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - ""
   resources:
@@ -32,16 +39,36 @@ rules:
   - apps.openshift.io
   resources:
   - deploymentconfigs
-  verbs: ["create", "delete", "deletecollection", "get", "list", "update", "watch"]
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - route.openshift.io
-  attributeRestrictions: null
   resources:
   - routes
-  verbs: ["create", "delete", "deletecollection", "get", "list", "update", "watch"]
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - update
+  - watch
 - apiGroups:
   - gpte.integreatly.org
   resources:
   - rhpamdevs
   - rhpamdevs/finalizers
-  verbs: ["create", "delete", "deletecollection", "get", "list", "update", "watch"]
+  verbs:
+  - create
+  - delete
+  - deletecollection
+  - get
+  - list
+  - update
+  - watch

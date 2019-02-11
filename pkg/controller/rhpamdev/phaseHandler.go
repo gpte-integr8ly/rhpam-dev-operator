@@ -4,11 +4,15 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
+	"os"
+	"time"
 
 	rhpamv1alpha1 "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/apis/rhpam/v1alpha1"
+	keycloak "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/keycloak"
 	appsv1 "github.com/openshift/api/apps/v1"
+	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	k8serrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -19,14 +23,16 @@ import (
 var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 type phaseHandler struct {
-	client client.Client
-	scheme *runtime.Scheme
+	client          client.Client
+	scheme          *runtime.Scheme
+	keycloakFactory *keycloak.KeycloakFactory
 }
 
 func NewPhaseHandler(c client.Client, s *runtime.Scheme) *phaseHandler {
 	return &phaseHandler{
-		client: c,
-		scheme: s,
+		client:          c,
+		scheme:          s,
+		keycloakFactory: keycloak.NewKeycloakFactory(),
 	}
 }
 
@@ -41,9 +47,121 @@ func (ph *phaseHandler) Initialize(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha
 		return nil, err
 	}
 
+	//get sso username, password, admin url
+	if err := ph.readSSOSecret(); err != nil {
+		log.Error(err, "Error reading RHSSO secret")
+		return nil, err
+	}
+
 	rhpam.Status.Phase = rhpamv1alpha1.PhaseInitialized
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
+}
+
+func (ph *phaseHandler) ProvisionRealm(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
+	log.Info("Phase Provision Realm")
+
+	//TODO: check if realm exits -> check for secret
+
+	//create realm in keycloak
+	ssoClient, err := ph.keycloakFactory.AuthenticatedClient()
+	if err != nil {
+		return nil, err
+	}
+	realmHelper := NewRealmHelper()
+
+	realmId := rhpam.Name + "-" + generateToken(6)
+	log.Info("Creating Realm", "Realm Id", realmId)
+	realmParams := RealmParameters{RealmId: realmId}
+	json, err := realmHelper.loadRealmTemplate(realmParams)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := ssoClient.CreateRealm(json); err != nil {
+		return nil, errors.Wrap(err, "Error creating realm in rhsso")
+	}
+
+	//create realm clients in keycloak
+	//business-central
+	bcClient := "rhpambc"
+	bcRealmClientParams := RealmClientParameters{ClientId: bcClient}
+	bcRealmClientParams.RootUrl = "https://" + BusinessCentralDeployment + "-" + rhpam.Namespace + "." + rhpam.Spec.Domain
+	bcRealmClientParams.AdminUrl = bcRealmClientParams.RootUrl
+	bcRealmClientParams.RedirectUris = "\"" + bcRealmClientParams.RootUrl + "/*\""
+	bcRealmClientParams.WebOrigin = "\"" + bcRealmClientParams.RootUrl + "\""
+	bcRealmClientParams.BearerOnly = "false"
+	bcRealmClientParams.ImplicitFlowEnabled = "false"
+	bcRealmClientParams.DirectAcessGrantEnabled = "true"
+	bcRealmClientParams.PublicClient = "false"
+	json1, err := realmHelper.loadRealmClientTemplate(bcRealmClientParams)
+	if err != nil {
+		return nil, err
+	}
+	if err := ssoClient.CreateClient(json1, realmId); err != nil {
+		return nil, errors.Wrap(err, "Error creating realm in rhsso")
+	}
+
+	//kie-server
+	ksClient := "rhpamks"
+	ksRealmClientParams := RealmClientParameters{ClientId: ksClient}
+	ksRealmClientParams.RootUrl = "https://" + KieServerDeployment + "-" + rhpam.Namespace + "." + rhpam.Spec.Domain
+	ksRealmClientParams.AdminUrl = ksRealmClientParams.RootUrl
+	ksRealmClientParams.RedirectUris = "\"" + ksRealmClientParams.RootUrl + "/*\""
+	ksRealmClientParams.WebOrigin = "\"" + ksRealmClientParams.RootUrl + "\""
+	ksRealmClientParams.BearerOnly = "true"
+	ksRealmClientParams.ImplicitFlowEnabled = "false"
+	ksRealmClientParams.DirectAcessGrantEnabled = "true"
+	ksRealmClientParams.PublicClient = "false"
+	json2, err := realmHelper.loadRealmClientTemplate(ksRealmClientParams)
+	if err != nil {
+		return nil, err
+	}
+	if err := ssoClient.CreateClient(json2, realmId); err != nil {
+		return nil, errors.Wrap(err, "Error creating realm in rhsso")
+	}
+
+	//kie-server direct
+	ksdRealmClientParams := RealmClientParameters{ClientId: "rhpamks-direct"}
+	ksdRealmClientParams.RootUrl = "https://" + KieServerDeployment + "-" + rhpam.Namespace + "." + rhpam.Spec.Domain
+	ksdRealmClientParams.AdminUrl = ksdRealmClientParams.RootUrl
+	ksdRealmClientParams.RedirectUris = "\"" + ksdRealmClientParams.RootUrl + "/*\""
+	ksdRealmClientParams.WebOrigin = "\"" + ksdRealmClientParams.RootUrl + "\""
+	ksdRealmClientParams.BearerOnly = "false"
+	ksdRealmClientParams.ImplicitFlowEnabled = "false"
+	ksdRealmClientParams.DirectAcessGrantEnabled = "true"
+	ksdRealmClientParams.PublicClient = "true"
+	json3, err := realmHelper.loadRealmClientTemplate(ksdRealmClientParams)
+	if err != nil {
+		return nil, err
+	}
+	if err := ssoClient.CreateClient(json3, realmId); err != nil {
+		return nil, errors.Wrap(err, "Error creating realm in rhsso")
+	}
+
+	//create secret with realm details
+	clientSecret, err := ph.getClientSecret(ssoClient, realmId, bcClient)
+	if err != nil {
+		return nil, err
+	}
+	err = ph.createRealmSecret(rhpam, BusinessCentralRealmSecret, ph.keycloakFactory.AdminUrl+"/auth", realmId, bcClient, clientSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	clientSecret, err = ph.getClientSecret(ssoClient, realmId, ksClient)
+	if err != nil {
+		return nil, err
+	}
+	err = ph.createRealmSecret(rhpam, KieServerRealmSecret, ph.keycloakFactory.AdminUrl+"/auth", realmId, ksClient, clientSecret)
+	if err != nil {
+		return nil, err
+	}
+
+	rhpam.Status.Phase = rhpamv1alpha1.PhaseRealmProvisioned
+	rhpam.Status.Version = RhpamVersion
+	return rhpam, nil
+
 }
 
 func (ph *phaseHandler) Prepare(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
@@ -53,7 +171,7 @@ func (ph *phaseHandler) Prepare(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.R
 		return nil, err
 	}
 
-	rhpam.Status.Phase = rhpamv1alpha1.PhasePrepared
+	rhpam.Status.Phase = rhpamv1alpha1.PhaseComplete
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
 }
@@ -93,7 +211,7 @@ func (ph *phaseHandler) InstallDatabase(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1
 	return rhpam, nil
 }
 
-func (ph *phaseHandler) installBusinessCentral(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
+func (ph *phaseHandler) InstallBusinessCentral(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
 	log.Info("Phase InstallBusinessCentral")
 
 	if err := ph.createResources(rhpam, []Resource{BusinessCentralPvcResource, BusinessCentralServiceResource,
@@ -121,7 +239,7 @@ func (ph *phaseHandler) WaitForDatabase(rhpam *rhpamv1alpha1.RhpamDev) (bool, *r
 	return ready, rhpam, nil
 }
 
-func (ph *phaseHandler) installKieServer(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
+func (ph *phaseHandler) InstallKieServer(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
 	log.Info("Phase InstallKieServer")
 
 	if err := ph.createResources(rhpam, []Resource{KieServerServiceResource, KieServerRouteResource, KieServerDeploymentResource}); err != nil {
@@ -131,6 +249,67 @@ func (ph *phaseHandler) installKieServer(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv
 	rhpam.Status.Phase = rhpamv1alpha1.PhaseComplete
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
+}
+
+func (ph *phaseHandler) readSSOSecret() error {
+	//get sso username, password, url
+	ssoNamespace := os.Getenv("SSO_NAMESPACE")
+	if ssoNamespace == "" {
+		return errors.New("Environment variable SSO_NAMESPACE is not set.")
+	}
+	ssoAdminCredentialsSecret := os.Getenv("SSO_ADMIN_CREDENTIALS_SECRET")
+	if ssoAdminCredentialsSecret == "" {
+		return errors.New("Environment variable SSO_ADMIN_CREDENTIALS_SECRET is not set.")
+	}
+
+	//read secret in sso namespace, extract sso username, sso password, sso admin url, store in keycloakclient
+	secret := &v1.Secret{}
+	selector := types.NamespacedName{
+		Namespace: ssoNamespace,
+		Name:      ssoAdminCredentialsSecret,
+	}
+
+	err := ph.client.Get(context.TODO(), selector, secret)
+	if err != nil {
+		if k8serrors.IsNotFound(err) {
+			return fmt.Errorf("Secret %s in namespace %s not found: %s", ssoAdminCredentialsSecret, ssoNamespace, err)
+		} else {
+			return fmt.Errorf("Error retrieving secret %s in namespace %s: %s", ssoAdminCredentialsSecret, ssoNamespace, err)
+		}
+	}
+	ph.keycloakFactory.AdminUser = string(secret.Data["SSO_ADMIN_USERNAME"])
+	ph.keycloakFactory.AdminPassword = string(secret.Data["SSO_ADMIN_PASSWORD"])
+	ph.keycloakFactory.AdminUrl = string(secret.Data["SSO_ADMIN_URL"])
+
+	return nil
+}
+
+func (ph *phaseHandler) getClientSecret(ssoClient keycloak.KeycloakInterface, realmId string, clientId string) (string, error) {
+	clients, err := ssoClient.ListClients(realmId)
+	if err != nil {
+		return "", err
+	}
+	id := ""
+	for _, c := range clients {
+		if c.ClientID == clientId {
+			id = c.ID
+			break
+		}
+	}
+	clientSecret, err := ssoClient.GetClientSecret(id, realmId)
+	if err != nil {
+		return "", err
+	}
+	return clientSecret, nil
+}
+
+func (ph *phaseHandler) createRealmSecret(rhpam *rhpamv1alpha1.RhpamDev, secret string, url string, realmId string, client string, clientSecret string) error {
+	err := ph.createSecret(rhpam, secret, map[string][]byte{"sso-url": []byte(url), "realm": []byte(realmId), "client": []byte(client), "client-secret": []byte(clientSecret)})
+	if err != nil {
+		log.Error(err, "Create secret failed.", "secret", secret)
+		return err
+	}
+	return nil
 }
 
 func (ph *phaseHandler) createResources(cr *rhpamv1alpha1.RhpamDev, resources []Resource) error {
@@ -165,7 +344,7 @@ func (ph *phaseHandler) createResource(cr *rhpamv1alpha1.RhpamDev, res Resource)
 	}
 
 	//Resource does not exist or something went wrong
-	if !errors.IsNotFound(err) {
+	if !k8serrors.IsNotFound(err) {
 		return fmt.Errorf("Error reading resource '%s': %s", res.name, err)
 	}
 
@@ -256,6 +435,7 @@ func (ph *phaseHandler) isDatabaseReady(cr *rhpamv1alpha1.RhpamDev) (bool, error
 }
 
 func generateToken(n int) string {
+	rand.Seed(time.Now().Unix())
 	b := make([]rune, n)
 	for i := range b {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]

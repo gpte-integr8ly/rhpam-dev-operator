@@ -6,6 +6,7 @@ import (
 
 // RhpamDevSpec defines the desired state of RhpamDev
 type RhpamDevSpec struct {
+	Domain string      `json:"domain"`
 	Config RhpamConfig `json:"config,omitempty"`
 }
 
@@ -49,7 +50,7 @@ type RhpamKieServerConfig struct {
 	KieMBeans           string `json:"kieMbeans,omitempty"`
 	KieServerId         string `json:"kieServerId,omitempty"`
 	DroolsFilterClasses string `json:"filterClasses,omitempty"`
-	BypassAuthUser      string `json:"bypassAuthUser,omitEmpty"`
+	BypassAuthUser      string `json:"bypassAuthUser,omitempty"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
@@ -72,19 +73,6 @@ type RhpamDevList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []RhpamDev `json:"items"`
 }
-
-type StatusPhase string
-
-var (
-	NoPhase                       StatusPhase = ""
-	PhaseInitialized              StatusPhase = "initialized"
-	PhasePrepared                 StatusPhase = "prepared"
-	PhaseDatabaseInstalled        StatusPhase = "database installed"
-	PhaseBusinessCentralInstalled StatusPhase = "business central installed"
-	PhaseDatabaseReady            StatusPhase = "database ready"
-	PhaseKieServerInstalled       StatusPhase = "kie server installed"
-	PhaseComplete                 StatusPhase = "complete"
-)
 
 func init() {
 	SchemeBuilder.Register(&RhpamDev{}, &RhpamDevList{})

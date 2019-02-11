@@ -3,3 +3,4 @@ kind: RhpamDev
 metadata:
   name: example-rhpamdev
 spec:
+  domain: apps.mycluster.com
