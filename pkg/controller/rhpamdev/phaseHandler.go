@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"math/rand"
-	"os"
 	"time"
 
 	rhpamv1alpha1 "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/apis/rhpam/v1alpha1"
+	common "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/controller/common"
 	keycloak "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/keycloak"
 	appsv1 "github.com/openshift/api/apps/v1"
 	"github.com/pkg/errors"
@@ -253,31 +253,12 @@ func (ph *phaseHandler) InstallKieServer(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv
 }
 
 func (ph *phaseHandler) readSSOSecret() error {
-	//get sso username, password, url
-	ssoNamespace := os.Getenv("SSO_NAMESPACE")
-	if ssoNamespace == "" {
-		return errors.New("Environment variable SSO_NAMESPACE is not set.")
-	}
-	ssoAdminCredentialsSecret := os.Getenv("SSO_ADMIN_CREDENTIALS_SECRET")
-	if ssoAdminCredentialsSecret == "" {
-		return errors.New("Environment variable SSO_ADMIN_CREDENTIALS_SECRET is not set.")
-	}
 
-	//read secret in sso namespace, extract sso username, sso password, sso admin url, store in keycloakclient
-	secret := &v1.Secret{}
-	selector := types.NamespacedName{
-		Namespace: ssoNamespace,
-		Name:      ssoAdminCredentialsSecret,
-	}
-
-	err := ph.client.Get(context.TODO(), selector, secret)
+	secret, err := common.ReadSSOSecret(ph.client)
 	if err != nil {
-		if k8serrors.IsNotFound(err) {
-			return fmt.Errorf("Secret %s in namespace %s not found: %s", ssoAdminCredentialsSecret, ssoNamespace, err)
-		} else {
-			return fmt.Errorf("Error retrieving secret %s in namespace %s: %s", ssoAdminCredentialsSecret, ssoNamespace, err)
-		}
+		return err
 	}
+
 	ph.keycloakFactory.AdminUser = string(secret.Data["SSO_ADMIN_USERNAME"])
 	ph.keycloakFactory.AdminPassword = string(secret.Data["SSO_ADMIN_PASSWORD"])
 	ph.keycloakFactory.AdminUrl = string(secret.Data["SSO_ADMIN_URL"])
