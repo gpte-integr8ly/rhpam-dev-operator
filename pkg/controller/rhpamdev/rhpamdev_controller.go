@@ -44,15 +44,15 @@ const (
 	BusinessCentralCpuLimit             = "2000m"
 	BusinessCentralMemoryRequest        = "1Gi"
 	BusinessCentralMemoryLimit          = "3Gi"
-	KieAdminUser                        = "adminUser"
+	KieAdminUser                        = "adminuser"
 	KieAdminPassword                    = "admin1!"
 	BusinessCentralGcMaxMetaSize        = "500"
 	BusinessCentralKieMBeans            = "enabled"
 	KieServerControllerUser             = "controllerUser"
 	KieServerControllerPassword         = "controller1!"
-	KieServerUser                       = "executionUser"
-	KieServerPassword                   = "executionUser1!"
-	KieMavenUser                        = "mavenUser"
+	KieServerUser                       = "executionuser"
+	KieServerPassword                   = "execution1!"
+	KieMavenUser                        = "mavenuser"
 	KieMavenPassword                    = "maven1!"
 	EapAdminUserName                    = "eapadmin"
 	EapAdminPassword                    = "eapadmin1!"
@@ -168,6 +168,9 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 		return r.handleResult(rhpamState, err)
 	case rhpamv1alpha1.PhaseInitialized:
 		rhpamState, err := r.phaseHandler.ProvisionRealm(rhpamCopy)
+		return r.handleResult(rhpamState, err)
+	case rhpamv1alpha1.PhasePrepare:
+		rhpamState, err := r.phaseHandler.Prepare(rhpamCopy)
 		return r.handleResult(rhpamState, err)
 	case rhpamv1alpha1.PhasePrepared:
 		rhpamState, err := r.phaseHandler.InstallDatabase(rhpamCopy)

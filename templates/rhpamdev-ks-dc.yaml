@@ -47,17 +47,17 @@ spec:
             command:
             - "/bin/bash"
             - "-c"
-            - "curl --fail --silent -u 'adminUser:admin1!' http://localhost:8080/services/rest/server/healthcheck"
+            - "/opt/eap/bin/livenessProbe.sh"
           initialDelaySeconds: 180
           timeoutSeconds: 2
-          periodSeconds: 15
+          periodSeconds: 30
           failureThreshold: 3
         readinessProbe:
           exec:
             command:
             - "/bin/bash"
             - "-c"
-            - "curl --fail --silent -u 'adminUser:admin1!' http://localhost:8080/services/rest/server/readycheck"
+            - "/opt/eap/bin/readinessProbe.sh"
           initialDelaySeconds: 30
           timeoutSeconds: 2
           periodSeconds: 30
@@ -106,8 +106,16 @@ spec:
           value: "{{ .KieServerDroolsFilterClasses }}"
         - name: KIE_MBEANS
           value: "{{ .KieServerKieMBeans }}"
+        - name: KIE_ADMIN_USER
+          value: "{{ .KieAdminUser }}"
+        - name: KIE_ADMIN_PWD
+          value: "{{ .KieAdminPassword }}"
         - name: KIE_SERVER_BYPASS_AUTH_USER
           value: "{{ .KieServerBypassAuthUser }}"
+        - name: KIE_SERVER_CONTROLLER_USER
+          value: "{{ .KieServerControllerUser }}"
+        - name: KIE_SERVER_CONTROLLER_PWD
+          value: "{{ .KieServerControllerPassword }}"
         - name: KIE_SERVER_CONTROLLER_SERVICE
           value: "{{ .BusinessCentralService }}"
         - name: KIE_SERVER_CONTROLLER_PROTOCOL
@@ -132,3 +140,29 @@ spec:
           value: "{{ .KieMavenUser }}"
         - name: RHPAMCENTR_MAVEN_REPO_PASSWORD
           value: "{{ .KieMavenPassword }}"
+        - name: SSO_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .KieServerRealmSecret }}
+              key: sso-url
+        - name: SSO_OPENIDCONNECT_DEPLOYMENTS
+          value: "ROOT.war"
+        - name: SSO_REALM
+          valueFrom:
+            secretKeyRef:
+              name: {{ .KieServerRealmSecret }}
+              key: realm
+        - name: SSO_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .KieServerRealmSecret }}
+              key: client-secret
+        - name: SSO_CLIENT
+          valueFrom:
+            secretKeyRef:
+              name: {{ .KieServerRealmSecret }}
+              key: client
+        - name: SSO_DISABLE_SSL_CERTIFICATE_VALIDATION
+          value: "true"
+        - name: SSO_PRINCIPAL_ATTRIBUTE
+          value: "preferred_username"

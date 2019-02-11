@@ -48,18 +48,18 @@ spec:
         livenessProbe:
           exec:
             command:
-            - "/bin/bash"
-            - "-c"
-            - "curl --fail --silent -u 'adminUser:admin1!' http://localhost:8080/kie-wb.jsp"
+            - '/bin/bash'
+            - '-c'
+            - 'curl --fail --silent -u "${KIE_ADMIN_USER}:${KIE_ADMIN_PWD}" http://localhost:8080/kie-wb.jsp'
           initialDelaySeconds: 180
           timeoutSeconds: 2
           periodSeconds: 15
         readinessProbe:
           exec:
             command:
-            - "/bin/bash"
-            - "-c"
-            - "curl --fail --silent -u 'adminUser:admin1!' http://localhost:8080/kie-wb.jsp"
+            - '/bin/bash'
+            - '-c'
+            - 'curl --fail --silent -u "${KIE_ADMIN_USER}:${KIE_ADMIN_PWD}" http://localhost:8080/kie-wb.jsp'
           initialDelaySeconds: 60
           timeoutSeconds: 2
           periodSeconds: 30
@@ -79,11 +79,41 @@ spec:
           protocol: TCP
         env:
         - name: GC_MAX_METASPACE_SIZE
-          value: "{{ .BusinessCentralGcMaxMetaSize }}"            
+          value: "{{ .BusinessCentralGcMaxMetaSize }}"
         - name: KIE_MBEANS
           value: "{{ .BusinessCentralKieMBeans }}"
         - name: JAVA_OPTS_APPEND
           value: "{{ .BusinessCentralJavaOptsAppend }}"
+        - name: KIE_ADMIN_USER
+          value: "{{ .KieAdminUser }}"
+        - name: KIE_ADMIN_PWD
+          value: "{{ .KieAdminPassword }}"
+        - name: SSO_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .BusinessCentralRealmSecret }}
+              key: sso-url
+        - name: SSO_OPENIDCONNECT_DEPLOYMENTS
+          value: "ROOT.war"
+        - name: SSO_REALM
+          valueFrom:
+            secretKeyRef:
+              name: {{ .BusinessCentralRealmSecret }}
+              key: realm
+        - name: SSO_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .BusinessCentralRealmSecret }}
+              key: client-secret
+        - name: SSO_CLIENT
+          valueFrom:
+            secretKeyRef:
+              name: {{ .BusinessCentralRealmSecret }}
+              key: client
+        - name: SSO_DISABLE_SSL_CERTIFICATE_VALIDATION
+          value: "true"
+        - name: SSO_PRINCIPAL_ATTRIBUTE
+          value: "preferred_username"
       volumes:
       - name: "{{ .BusinessCentralPvc }}"
         persistentVolumeClaim:

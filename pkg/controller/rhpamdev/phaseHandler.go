@@ -171,7 +171,7 @@ func (ph *phaseHandler) Prepare(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.R
 		return nil, err
 	}
 
-	rhpam.Status.Phase = rhpamv1alpha1.PhaseComplete
+	rhpam.Status.Phase = rhpamv1alpha1.PhasePrepared
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
 }

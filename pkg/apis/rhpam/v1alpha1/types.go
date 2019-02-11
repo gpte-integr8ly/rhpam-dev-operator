@@ -6,6 +6,7 @@ var (
 	NoPhase                       StatusPhase
 	PhaseInitialized              StatusPhase = "initialized"
 	PhaseRealmProvisioned         StatusPhase = "realm provisioned"
+	PhasePrepare                  StatusPhase = "prepare provisioning"
 	PhasePrepared                 StatusPhase = "prepared"
 	PhaseDatabaseInstalled        StatusPhase = "database installed"
 	PhaseBusinessCentralInstalled StatusPhase = "business central installed"

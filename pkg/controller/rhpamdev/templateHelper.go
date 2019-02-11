@@ -45,6 +45,7 @@ type RhpamdevParameters struct {
 	BusinessCentralGcMaxMetaSize        string
 	BusinessCentralKieMBeans            string
 	BusinessCentralJavaOptsAppend       string
+	BusinessCentralRealmSecret          string
 	KieServerRoute                      string
 	KieServerService                    string
 	KieServerDeployment                 string
@@ -59,10 +60,15 @@ type RhpamdevParameters struct {
 	KieServerDroolsFilterClasses        string
 	KieServerBypassAuthUser             string
 	KieServerControllerProtocol         string
+	KieServerControllerUser             string
+	KieServerControllerPassword         string
 	KieServerId                         string
+	KieAdminUser                        string
+	KieAdminPassword                    string
 	KieMavenUser                        string
 	KieMavenPassword                    string
 	KieServerKieMBeans                  string
+	KieServerRealmSecret                string
 }
 
 func newTemplateHelper(rhpam *rhpamv1alpha1.RhpamDev) *TemplateHelper {
@@ -97,6 +103,7 @@ func newTemplateHelper(rhpam *rhpamv1alpha1.RhpamDev) *TemplateHelper {
 		BusinessCentralGcMaxMetaSize:        valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.GcMaxMetaSize, BusinessCentralGcMaxMetaSize),
 		BusinessCentralJavaOptsAppend:       valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.JavaOptsAppend, BusinessCentralJavaOptsAppend),
 		BusinessCentralKieMBeans:            valueOrDefault(rhpam.Spec.Config.BusinessCentralConfig.KieMBeans, BusinessCentralKieMBeans),
+		BusinessCentralRealmSecret:          BusinessCentralRealmSecret,
 		KieServerRoute:                      KieServerRoute,
 		KieServerService:                    KieServerService,
 		KieServerDeployment:                 KieServerDeployment,
@@ -111,10 +118,15 @@ func newTemplateHelper(rhpam *rhpamv1alpha1.RhpamDev) *TemplateHelper {
 		KieServerDroolsFilterClasses:        valueOrDefault(rhpam.Spec.Config.KieServerConfig.DroolsFilterClasses, KieServerDroolsFilterClasses),
 		KieServerBypassAuthUser:             valueOrDefault(rhpam.Spec.Config.KieServerConfig.BypassAuthUser, KieServerBypassAuthUser),
 		KieServerControllerProtocol:         KieServerControllerProtocol,
+		KieServerControllerUser:             KieServerControllerUser,
+		KieServerControllerPassword:         KieServerControllerPassword,
 		KieServerId:                         KieServerId,
+		KieAdminUser:                        KieAdminUser,
+		KieAdminPassword:                    KieAdminPassword,
 		KieMavenUser:                        KieMavenUser,
 		KieMavenPassword:                    KieMavenPassword,
 		KieServerKieMBeans:                  valueOrDefault(rhpam.Spec.Config.KieServerConfig.KieMBeans, KieServerKieMBeans),
+		KieServerRealmSecret:                KieServerRealmSecret,
 	}
 
 	templatePath := os.Getenv("TEMPLATE_PATH")
