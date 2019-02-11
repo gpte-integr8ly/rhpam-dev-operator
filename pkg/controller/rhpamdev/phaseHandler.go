@@ -10,6 +10,7 @@ import (
 	common "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/controller/common"
 	keycloak "github.com/gpte-integr8ly/rhpam-dev-operator/pkg/keycloak"
 	appsv1 "github.com/openshift/api/apps/v1"
+	routev1 "github.com/openshift/api/route/v1"
 	"github.com/pkg/errors"
 	"k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
@@ -38,18 +39,18 @@ func NewPhaseHandler(c client.Client, s *runtime.Scheme) *phaseHandler {
 
 func (ph *phaseHandler) Initialize(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
 	log.Info("Phase Initialize")
+
+	//set finalizer
+	if err := common.AddFinalizer(rhpam, rhpamv1alpha1.RhpamFinalizer); err != nil {
+		return nil, err
+	}
+
 	// fill in any defaults that are not set
 	rhpam.Defaults()
 
 	// validate
 	if err := rhpam.Validate(); err != nil {
 		log.Error(err, "Validation failed", "phase", "Initialize")
-		return nil, err
-	}
-
-	//get sso username, password, admin url
-	if err := ph.readSSOSecret(); err != nil {
-		log.Error(err, "Error reading RHSSO secret")
 		return nil, err
 	}
 
@@ -64,7 +65,7 @@ func (ph *phaseHandler) ProvisionRealm(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1a
 	//TODO: check if realm exits -> check for secret
 
 	//create realm in keycloak
-	ssoClient, err := ph.keycloakFactory.AuthenticatedClient()
+	ssoClient, err := ph.authenticatedClient()
 	if err != nil {
 		return nil, err
 	}
@@ -252,6 +253,158 @@ func (ph *phaseHandler) InstallKieServer(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv
 	return rhpam, nil
 }
 
+func (ph *phaseHandler) Deprovision(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
+
+	// delete realm
+	ssoClient, err := ph.authenticatedClient()
+	if err != nil {
+		return nil, err
+	}
+	if err := ssoClient.DeleteRealm(rhpam.Status.Realm); err != nil {
+		return nil, errors.Wrap(err, "Error deleting realm in rhsso")
+	}
+
+	// find rhpamuser objects in the current namespace and set to deprovisioned
+	rhpamuserlist := &rhpamv1alpha1.RhpamUserList{}
+	opts := &client.ListOptions{Namespace: rhpam.ObjectMeta.Namespace}
+	err = ph.client.List(context.TODO(), opts, rhpamuserlist)
+	if err != nil {
+		log.Error(err, "Error when getting rhpamuser list")
+		return nil, err
+	}
+	for _, rhpamuser := range rhpamuserlist.Items {
+		log.Info("Rhpamuser found", "Name", rhpamuser.Name, "Status", rhpamuser.Status.Phase)
+		if rhpam.Status.Realm == rhpamuser.Status.Realm {
+			rhpamuser.Status.Phase = rhpamv1alpha1.PhaseDeprovisioned
+			ph.client.Update(context.TODO(), &rhpamuser)
+		}
+	}
+
+	// delete assets
+	ksService := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      BusinessCentralService,
+		},
+	}
+	ph.client.Delete(context.TODO(), ksService)
+
+	ksRoute := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      KieServerRoute,
+		},
+	}
+	ph.client.Delete(context.TODO(), ksRoute)
+
+	ksDc := &appsv1.DeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      KieServerDeployment,
+		},
+	}
+	ph.client.Delete(context.TODO(), ksDc)
+
+	bcService := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      BusinessCentralService,
+		},
+	}
+	ph.client.Delete(context.TODO(), bcService)
+
+	bcRoute := &routev1.Route{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      BusinessCentralRoute,
+		},
+	}
+	ph.client.Delete(context.TODO(), bcRoute)
+
+	bcDc := &appsv1.DeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      BusinessCentralDeployment,
+		},
+	}
+	ph.client.Delete(context.TODO(), bcDc)
+
+	bcPvc := &v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      BusinessCentralPvc,
+		},
+	}
+	ph.client.Delete(context.TODO(), bcPvc)
+
+	dbService := &v1.Service{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      DatabaseService,
+		},
+	}
+	ph.client.Delete(context.TODO(), dbService)
+
+	dbDc := &appsv1.DeploymentConfig{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      DatabaseDeployment,
+		},
+	}
+	ph.client.Delete(context.TODO(), dbDc)
+
+	dbPvc := &v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      DatabasePvc,
+		},
+	}
+	ph.client.Delete(context.TODO(), dbPvc)
+
+	dbInitConfigmap := &v1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      DatabaseInitConfigmap,
+		},
+	}
+	ph.client.Delete(context.TODO(), dbInitConfigmap)
+
+	dbSecret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      DatabaseCredentialsSecret,
+		},
+	}
+	ph.client.Delete(context.TODO(), dbSecret)
+
+	ksRealmSecret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      KieServerRealmSecret,
+		},
+	}
+	ph.client.Delete(context.TODO(), ksRealmSecret)
+
+	bcRealmSecret := &v1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      BusinessCentralRealmSecret,
+		},
+	}
+	ph.client.Delete(context.TODO(), bcRealmSecret)
+
+	rhpamSa := &v1.ServiceAccount{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: rhpam.ObjectMeta.Namespace,
+			Name:      ServiceAccount,
+		},
+	}
+	ph.client.Delete(context.TODO(), rhpamSa)
+
+	rhpam.Status.Phase = rhpamv1alpha1.PhaseDeprovisioned
+	return rhpam, nil
+}
+
 func (ph *phaseHandler) readSSOSecret() error {
 
 	secret, err := common.ReadSSOSecret(ph.client)
@@ -423,4 +576,17 @@ func generateToken(n int) string {
 		b[i] = letterRunes[rand.Intn(len(letterRunes))]
 	}
 	return string(b)
+}
+
+func (ph *phaseHandler) authenticatedClient() (keycloak.KeycloakInterface, error) {
+	//get sso username, password, admin url
+	if err := ph.readSSOSecret(); err != nil {
+		log.Error(err, "Error reading RHSSO secret")
+		return nil, err
+	}
+	ssoClient, err := ph.keycloakFactory.AuthenticatedClient()
+	if err != nil {
+		return nil, err
+	}
+	return ssoClient, nil
 }

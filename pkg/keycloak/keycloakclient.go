@@ -248,6 +248,11 @@ func (c *Client) delete(resourcePath, resourceName string) error {
 	return nil
 }
 
+func (c *Client) DeleteRealm(realm string) error {
+	err := c.delete(fmt.Sprintf("realms/%s", realm), "realm")
+	return err
+}
+
 func (c *Client) DeleteUser(userID, realm string) error {
 	return c.delete(fmt.Sprintf("realms/%s/users/%s", realm, userID), "user")
 }
@@ -433,8 +438,7 @@ func defaultRequester() Requester {
 
 type KeycloakInterface interface {
 	CreateRealm(json []byte) error
-
-	CreateRole(json []byte, realm string) error
+	DeleteRealm(realm string) error
 
 	CreateClient(json []byte, realm string) error
 	GetClientSecret(clientId, realm string) (string, error)
@@ -446,6 +450,7 @@ type KeycloakInterface interface {
 	ListUsers(realm string) ([]*KeycloakUser, error)
 	DeleteUser(userID, realm string) error
 
+	CreateRole(json []byte, realm string) error
 	GetRole(roleName string, realm string) (*KeycloakRole, error)
 	ListRoles(realmName string) ([]*KeycloakRole, error)
 	DeleteRole(roleName string, realm string) error

@@ -162,6 +162,13 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 	}
 
 	rhpamCopy := rhpam.DeepCopy()
+
+	if rhpamCopy.GetDeletionTimestamp() != nil {
+		rhpamState, err := r.phaseHandler.Deprovision(rhpamCopy)
+		rhpamState.Finalizers = []string{}
+		return r.handleResult(rhpamState, err)
+	}
+
 	switch rhpamCopy.Status.Phase {
 	case rhpamv1alpha1.NoPhase:
 		rhpamState, err := r.phaseHandler.Initialize(rhpamCopy)
