@@ -159,6 +159,7 @@ func (ph *phaseHandler) ProvisionRealm(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1a
 	}
 
 	rhpam.Status.Phase = rhpamv1alpha1.PhaseRealmProvisioned
+	rhpam.Status.Realm = realmId
 	rhpam.Status.Version = RhpamVersion
 	return rhpam, nil
 

@@ -14,6 +14,7 @@ type RhpamDevSpec struct {
 type RhpamDevStatus struct {
 	Phase   StatusPhase `json:"phase"`
 	Version string      `json:"version"`
+	Realm   string      `json:"realm"`
 }
 
 type RhpamConfig struct {
