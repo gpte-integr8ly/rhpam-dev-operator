@@ -8,7 +8,10 @@ import (
 
 	"k8s.io/api/core/v1"
 	k8serrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/sets"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -41,4 +44,15 @@ func ReadSSOSecret(client client.Client) (*v1.Secret, error) {
 	}
 
 	return secret, nil
+}
+
+func AddFinalizer(obj runtime.Object, value string) error {
+	accessor, err := meta.Accessor(obj)
+	if err != nil {
+		return err
+	}
+	finalizers := sets.NewString(accessor.GetFinalizers()...)
+	finalizers.Insert(value)
+	accessor.SetFinalizers(finalizers.List())
+	return nil
 }

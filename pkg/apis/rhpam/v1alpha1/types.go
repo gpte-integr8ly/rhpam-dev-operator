@@ -2,6 +2,10 @@ package v1alpha1
 
 type StatusPhase string
 
+const (
+	RhpamFinalizer = "finalizer.rhpam"
+)
+
 var (
 	NoPhase                       StatusPhase
 	PhaseInitialized              StatusPhase = "initialized"
@@ -15,4 +19,6 @@ var (
 	PhaseKieServerInstalled       StatusPhase = "kie server installed"
 	PhaseReconcile                StatusPhase = "reconcile"
 	PhaseComplete                 StatusPhase = "complete"
+	PhaseDeprovisioned            StatusPhase = "deprovisioned"
+	PhaseDeprovisionFailed        StatusPhase = "deprovision failed"
 )

@@ -25,6 +25,10 @@ func NewPhaseHandler(c client.Client) *phaseHandler {
 func (ph *phaseHandler) Initialize(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1alpha1.RhpamUser, error) {
 	log.Info("Phase Initialize")
 
+	if err := common.AddFinalizer(rhpamuser, rhpamv1alpha1.RhpamFinalizer); err != nil {
+		return nil, err
+	}
+
 	rhpamuser.Status.Phase = rhpamv1alpha1.PhaseAccepted
 	return rhpamuser, nil
 }
@@ -94,6 +98,35 @@ func (ph *phaseHandler) Reconcile(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1a
 		return nil, err
 	}
 
+	return rhpamuser, nil
+}
+
+func (ph *phaseHandler) Deprovision(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv1alpha1.RhpamUser, error) {
+	// delete all non default users
+	ssoClient, err := ph.authenticatedClient()
+	if err != nil {
+		return nil, err
+	}
+	users, err := ssoClient.ListUsers(rhpamuser.Status.Realm)
+	if err != nil {
+		return nil, err
+	}
+	for _, user := range users {
+		if !isDefaultUser(user.UserName) {
+			if err := ssoClient.DeleteUser(user.ID, rhpamuser.Status.Realm); err != nil {
+				return nil, errors.Wrap(err, "Error deleting user in rhsso")
+			}
+		}
+	}
+	roles, err := ssoClient.ListRoles(rhpamuser.Status.Realm)
+	for _, role := range roles {
+		if !isDefaultRole(role.Name) {
+			if err := ssoClient.DeleteRole(role.Name, rhpamuser.Status.Realm); err != nil {
+				return nil, errors.Wrap(err, "Error deleting role in rhsso")
+			}
+		}
+	}
+	rhpamuser.Status.Phase = rhpamv1alpha1.PhaseDeprovisioned
 	return rhpamuser, nil
 }
 

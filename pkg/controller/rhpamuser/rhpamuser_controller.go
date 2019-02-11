@@ -94,6 +94,24 @@ func (r *ReconcileRhpamUser) Reconcile(request reconcile.Request) (reconcile.Res
 	}
 
 	rhpamCopy := rhpam.DeepCopy()
+
+	if rhpamCopy.GetDeletionTimestamp() != nil {
+		switch rhpamCopy.Status.Phase {
+		case rhpamv1alpha1.PhaseDeprovisioned:
+			rhpamCopy.Finalizers = []string{}
+			rhpamCopy.Status.Phase = rhpamv1alpha1.PhaseComplete
+			return r.handleResult(rhpamCopy, nil, false)
+		default:
+			rhpamState, err := r.phaseHandler.Deprovision(rhpamCopy)
+			if err != nil {
+				rhpamState.Status.Phase = rhpamv1alpha1.PhaseDeprovisionFailed
+				r.client.Update(context.TODO(), rhpamState)
+				return r.handleResult(rhpamState, err, false)
+			}
+			return r.handleResult(rhpamState, nil, true)
+		}
+	}
+
 	switch rhpamCopy.Status.Phase {
 	case rhpamv1alpha1.NoPhase:
 		rhpamState, err := r.phaseHandler.Initialize(rhpamCopy)
@@ -105,7 +123,7 @@ func (r *ReconcileRhpamUser) Reconcile(request reconcile.Request) (reconcile.Res
 		rhpamState, err := r.phaseHandler.Reconcile(rhpamCopy)
 		return r.handleResult(rhpamState, err, false)
 	case rhpamv1alpha1.PhaseComplete:
-		reqLogger.Info("RHPAM user installation complete")
+		// no-op
 	}
 
 	return reconcile.Result{}, nil
