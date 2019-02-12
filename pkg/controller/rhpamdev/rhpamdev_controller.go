@@ -17,7 +17,7 @@ import (
 )
 
 const (
-	RhpamVersion                        = "7.1.1.GA"
+	RhpamVersion                        = "7.2.0.GA"
 	ApplicationName                     = "rhpam"
 	ServiceAccount                      = "rhpam"
 	DatabaseCredentialsSecret           = "rhpam-postgresql"
@@ -38,8 +38,8 @@ const (
 	BusinessCentralDeployment           = "rhpam-bc"
 	BusinessCentralVolumeCapacity       = "1Gi"
 	BusinessCentralImageStreamNamespace = "openshift"
-	BusinessCentralImage                = "rhpam71-businesscentral-openshift"
-	BusinessCentralImageTag             = "1.1"
+	BusinessCentralImage                = "rhpam72-businesscentral-openshift"
+	BusinessCentralImageTag             = "1.0"
 	BusinessCentralCpuRequest           = "200m"
 	BusinessCentralCpuLimit             = "2000m"
 	BusinessCentralMemoryRequest        = "1Gi"
@@ -62,8 +62,8 @@ const (
 	KieServerService                    = "rhpam-kieserver"
 	KieServerDeployment                 = "rhpam-kieserver"
 	KieServerImageStreamNamespace       = "openshift"
-	KieServerImage                      = "rhpam71-kieserver-openshift"
-	KieServerImageTag                   = "1.1"
+	KieServerImage                      = "rhpam72-kieserver-openshift"
+	KieServerImageTag                   = "1.0"
 	KieServerCpuRequest                 = "200m"
 	KieServerCpuLimit                   = "1000m"
 	KieServerMemoryRequest              = "1Gi"
