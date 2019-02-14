@@ -105,16 +105,16 @@ func (ph *phaseHandler) Deprovision(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv
 	// delete all non default users
 	ssoClient, err := ph.authenticatedClient()
 	if err != nil {
-		return nil, err
+		return rhpamuser, err
 	}
 	users, err := ssoClient.ListUsers(rhpamuser.Status.Realm)
 	if err != nil {
-		return nil, err
+		return rhpamuser, err
 	}
 	for _, user := range users {
 		if !isDefaultUser(user.UserName) {
 			if err := ssoClient.DeleteUser(user.ID, rhpamuser.Status.Realm); err != nil {
-				return nil, errors.Wrap(err, "Error deleting user in rhsso")
+				return rhpamuser, errors.Wrap(err, "Error deleting user in rhsso")
 			}
 		}
 	}
@@ -122,7 +122,7 @@ func (ph *phaseHandler) Deprovision(rhpamuser *rhpamv1alpha1.RhpamUser) (*rhpamv
 	for _, role := range roles {
 		if !isDefaultRole(role.Name) {
 			if err := ssoClient.DeleteRole(role.Name, rhpamuser.Status.Realm); err != nil {
-				return nil, errors.Wrap(err, "Error deleting role in rhsso")
+				return rhpamuser, errors.Wrap(err, "Error deleting role in rhsso")
 			}
 		}
 	}
