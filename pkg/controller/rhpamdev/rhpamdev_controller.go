@@ -165,7 +165,9 @@ func (r *ReconcileRhpamDev) Reconcile(request reconcile.Request) (reconcile.Resu
 
 	if rhpamCopy.GetDeletionTimestamp() != nil {
 		rhpamState, err := r.phaseHandler.Deprovision(rhpamCopy)
-		rhpamState.Finalizers = []string{}
+		if err == nil {
+			rhpamState.Finalizers = []string{}
+		}
 		return r.handleResult(rhpamState, err)
 	}
 
