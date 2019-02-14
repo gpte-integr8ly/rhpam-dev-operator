@@ -62,7 +62,9 @@ func (ph *phaseHandler) Initialize(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha
 func (ph *phaseHandler) ProvisionRealm(rhpam *rhpamv1alpha1.RhpamDev) (*rhpamv1alpha1.RhpamDev, error) {
 	log.Info("Phase Provision Realm")
 
-	//TODO: check if realm exits -> check for secret
+	// update status
+	rhpam.Status.Phase = rhpamv1alpha1.PhaseRealmProvisioning
+	ph.client.Update(context.TODO(), rhpam)
 
 	//create realm in keycloak
 	ssoClient, err := ph.authenticatedClient()

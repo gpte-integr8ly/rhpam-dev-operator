@@ -10,6 +10,7 @@ var (
 	NoPhase                       StatusPhase
 	PhaseInitialized              StatusPhase = "initialized"
 	PhaseAccepted                 StatusPhase = "accepted"
+	PhaseRealmProvisioning        StatusPhase = "realm provisioning"
 	PhaseRealmProvisioned         StatusPhase = "realm provisioned"
 	PhasePrepare                  StatusPhase = "prepare provisioning"
 	PhasePrepared                 StatusPhase = "prepared"
